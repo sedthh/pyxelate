@@ -21,7 +21,7 @@ axes[0].imshow(img)
 axes[1].imshow(img_small)
 plt.show()
 ``` 
-![meow.exe](cat.png)
+![meow.exe](cat2.png)
 
 ### API
 
@@ -39,7 +39,7 @@ The method applies a few computer vision functions and simple convolutions on im
 This was inspired by the [Histogram of Oriented Gradients](https://scikit-image.org/docs/dev/auto_examples/features_detection/plot_hog.html) method.
 Then a Gaussian Mixture model is fitted (instead of conventional K-means) to find a reduced palette based on its components.
 
-![Good boye resized](corgi.png)
+![Good boye resized](corgi4.png)
 
 The Pyxelate class requires Python 3.7+ and relies on the following libraries to run:
 - [skimage 0.16.2](https://scikit-image.org/)
