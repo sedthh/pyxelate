@@ -132,8 +132,7 @@ class Pyxelate:
 					conv = np.abs(np.sum(np.multiply(self.CONVOLUTIONS, f.reshape(-1, 2, 2)).reshape(-1, 4), axis=1))
 					new_image[i] = np.mean(f[self.SOLUTIONS[np.argmax(conv)]])
 				new_image = new_image.reshape((h, w))
-				if i < self.ITER - 1:
-					dim = new_image.copy()
+				dim = new_image.copy()
 			return new_image
 
 		return _wrapper(image)
