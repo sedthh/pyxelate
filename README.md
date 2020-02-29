@@ -3,6 +3,12 @@ Pyxelate is a Python class that converts images into tiny pixel arts with limite
 
 ![Definitely not cherry picking](palm10.png)
 
+### Installation
+
+```
+pip3 install git+https://github.com/sedthh/pyxelate.git
+```
+
 Example usage:
 ```python
 from pyxelate import Pyxelate
@@ -34,12 +40,16 @@ The **Pyxelate()** class accepts the following init parameters:
 
 Once the class is created, call **convert(image)** by passing a NumPy array representation of the image.  
 
-### Requirements
+### Details
+
 The method applies a few computer vision functions and simple convolutions on images and selects pixels based on the calculated gradient's magnitude. 
 This was inspired by the [Histogram of Oriented Gradients](https://scikit-image.org/docs/dev/auto_examples/features_detection/plot_hog.html) method.
 Then a Gaussian Mixture model is fitted (instead of conventional K-means) to find a reduced palette based on its components.
 
 ![Good boye resized](corgi4.png)
+
+
+### Requirements
 
 The Pyxelate class requires Python 3.7+ and relies on the following libraries to run:
 - [skimage 0.16.2](https://scikit-image.org/)
