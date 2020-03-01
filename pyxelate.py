@@ -79,7 +79,7 @@ class Pyxelate:
 											 covariance_type="tied",
 											 weight_concentration_prior_type="dirichlet_distribution",
 											 mean_precision_prior=1. / 256.,
-											 warm_start=True,
+											 warm_start=False,
 											 random_state=self.random_state)
 
 	def convert(self, image):

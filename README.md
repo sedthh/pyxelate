@@ -1,7 +1,7 @@
 # Generate pixel arts from images
 Pyxelate is a Python class that converts images into tiny pixel arts with limited color palettes.
 
-![Definitely not cherry picking](palm10.png)
+![Definitely not cherry picking](examples/palm10.png)
 
 ### Installation
 
@@ -9,7 +9,7 @@ Pyxelate is a Python class that converts images into tiny pixel arts with limite
 pip3 install git+https://github.com/sedthh/pyxelate.git
 ```
 
-Example usage:
+### Example usage:
 ```python
 from pyxelate import Pyxelate
 from skimage import io
@@ -27,7 +27,7 @@ axes[0].imshow(img)
 axes[1].imshow(img_small)
 plt.show()
 ``` 
-![meow.exe](cat2.png)
+![meow.exe](examples/cat2.png)
 
 ### API
 
@@ -40,13 +40,15 @@ The **Pyxelate()** class accepts the following init parameters:
 
 Once the class is created, call **convert(image)** by passing a NumPy array representation of the image.  
 
+![Synthwave vibes](examples/f.png)
+
 ### Details
 
 The method applies a few computer vision functions and simple convolutions on images and selects pixels based on the calculated gradient's magnitude. 
 This was inspired by the [Histogram of Oriented Gradients](https://scikit-image.org/docs/dev/auto_examples/features_detection/plot_hog.html) method.
 Then a Gaussian Mixture model is fitted (instead of conventional K-means) to find a reduced palette based on its components.
 
-![Good boye resized](corgi4.png)
+![Good boye resized](examples/corgi4.png)
 
 
 ### Requirements
@@ -54,5 +56,7 @@ Then a Gaussian Mixture model is fitted (instead of conventional K-means) to fin
 The Pyxelate class requires Python 3.7+ and relies on the following libraries to run:
 - [skimage 0.16.2](https://scikit-image.org/)
 - [sklearn 0.22.1](https://scikit-learn.org/stable/)
+
+Limitations: the method does not support dithering, as it would most likely add noise to areas with color gradients, making edges less clear. 
 
 The source code is available under the MIT license.
