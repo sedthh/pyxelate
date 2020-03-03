@@ -55,35 +55,11 @@ Then a Gaussian Mixture model is fitted (instead of conventional K-means) to fin
 ```pyx.py``` is the command line interface for the Pyxelate class and accepts a bunch of arguments to process multiple files one after another.
 
 ``` none
-usage: pyx.py [-h] [-f factor] [-s scaling] [-c colors] [-r regenerate]
-              [-t state] [-p path] [-o path]
-
-Pixelate an image or images in a directory.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  
-  -f factor, --factor factor
-                        The factor by which the image should be downscaled. Defaults to 5.
-  
-  -s scaling, --scaling scaling
-                        The factor by which the generated image should be upscaled. Defaults to 5.
-  
-  -c colors, --colors colors
-                        The amount of colors of the pixelated image. Defaults to 8.
-  
-  -r regenerate, --regenerate regenerate
-                        Regenerate the palette for each image. Defaults to True.
-  
-  -t state, --state state
-                        Sets the random state of the Bayesian Gaussian Mixture. Defaults to 0.
-  
-  -p path, --path path  
-                        Path to single image or directory containing images for processing. Defaults to execution directory.
-
-  -o path, --outpath path
-                        Path to the directory where the pixelated images are stored. Defaults to <cwd>/pyxelated
+usage: pyx.py [-h] [-f scale down input image by factor] [-s scale up output image by factor] [-c colors] [-r regenerate_palette]
+              [-t random_state] [-i folder of input images] [-o folder of output images]
 ```
+
+If not **--output** was defined, a **pyxelated/** folder will be created for output images. 
 
 
 ### Requirements
