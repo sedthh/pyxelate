@@ -28,8 +28,8 @@ def get_filelist(path):
     elif os.path.isfile(path):
         return [path]
     else:
-        print("path points to non image file")
-        return None
+        print("Path points to non image file.")
+        sys.exit(1)
 
 def make_ouput_dir():
     path = os.getcwd() + "/pyxelated"
@@ -66,7 +66,7 @@ args = parse_arugments()
 imagefiles = get_filelist(args.path)
 
 # use the output directory defined by args
-if args.outpath == "." and os.path.isdir(args.outpath):
+if os.path.isdir(args.outpath):
     output_dir = args.outpath
 # otherwise create one
 else:
