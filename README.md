@@ -19,8 +19,9 @@ img = io.imread("cat.jpg")
 # generate pixel art that is 1/12 the size
 height, width, _ = img.shape 
 colors = 8
-p = Pyxelate(height // 12, width // 12, colors)
-img_small = p.convert(img)  # convert img
+dither = 0.
+p = Pyxelate(height // 12, width // 12, colors, dither)
+img_small = p.convert(img)  # convert an image with these settings
 
 _, axes = plt.subplots(1, 2, figsize=(16, 16))
 axes[0].imshow(img)
@@ -35,6 +36,7 @@ The **Pyxelate()** class accepts the following init parameters:
 - **height**: the height of the result image (height was chosen to be first parameter to mirror the array representation)
 - **width**: the width of the result image
 - **color**: the number of colors (default is 8)
+- **dither**: the amont of dithering between 0. - 1. (defaults value is 1 / (color + 1) )
 - **regenerate_palette**: if set to False, then the palette will only be generated once, and all future images will be generated using this original palette. This is useful for generating a sequence of images with the same palette (the default value is True, all images will have their own palettes).
 - **random_state**: the random state for the Bayesian Gaussian Mixture model (default is 0)
 
@@ -55,11 +57,11 @@ Then a Gaussian Mixture model is fitted (instead of conventional K-means) to fin
 ```pyx.py``` is the command line interface for the Pyxelate class and accepts a bunch of arguments to process multiple files one after another.
 
 ``` none
-usage: pyx.py [-h] [-f scale down input image by factor] [-s scale up output image by factor] [-c colors] [-r regenerate_palette]
-              [-t random_state] [-i folder of input images] [-o folder of output images]
+usage: pyx.py [-h] [-f scale down input image by factor] [-s scale up output image by factor] [-c colors] [-d dither] 
+              [-r regenerate_palette] [-t random_state] [-i folder of input images] [-o folder of output images]
 ```
 
-If not **--output** was defined, a **pyxelated/** folder will be created for output images. 
+If no **--output** was defined, a **pyxelated/** folder will be created for output images. 
 
 
 ### Requirements

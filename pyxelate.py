@@ -10,6 +10,8 @@ from skimage.transform import resize
 
 from sklearn.mixture import BayesianGaussianMixture
 
+__version__ = '1.1.0'
+__version_info__ = tuple(int(num) for num in __version__.split('.'))
 
 class Pyxelate:
 
@@ -61,7 +63,7 @@ class Pyxelate:
 
 	ITER = 2
 
-	def __init__(self, height, width, color=8, regenerate_palette=True, random_state=0):
+	def __init__(self, height, width, color=8, dither=None, regenerate_palette=True, random_state=0):
 		"""Create instance for generating similar pixel arts."""
 
 		self.height = int(height)
@@ -71,7 +73,13 @@ class Pyxelate:
 		self.color = int(color)
 		if self.color < 2:
 			raise ValueError("The minimum number of colors is 2.")
-		self.regenerate_palette = regenerate_palette
+		if not dither:
+			self.dither = 1 / (self.color + 1)
+		elif dither > 0. and dither < 1.:
+			self.dither = float(dither)
+		else:
+			raise ValueError("The value of dither should be between 0. - 1.")
+		self.regenerate_palette = bool(regenerate_palette)
 		self.is_fitted = False
 		self.random_state = int(random_state)
 		self.model = BayesianGaussianMixture(n_components=self.color,
@@ -103,14 +111,27 @@ class Pyxelate:
 		width, height, depth = image.shape
 		reshaped = np.reshape(image, (width * height, depth))
 		y = self.model.predict(reshaped)
-
 		# increase hue and snap color values to multiples of 8
 		palette = rgb2hsv(self.model.means_.reshape(-1, 1, 3))
 		palette[:, :, 1] *= 1.14
 		palette = hsv2rgb(palette).reshape(self.color, 3) // 8 * 8
 
 		# return recolored image
-		image = np.reshape(palette[y], (width, height, depth))
+		image = palette[y]
+		# dither
+		if self.dither:
+			y = self.model.predict_proba(reshaped)
+			# get second best probability and remove it
+			y[np.arange(len(y)), np.argmax(y, axis=1)] = 0
+			# get new best and values
+			v = np.max(y, axis=1)
+			y = np.argmax(y, axis=1)
+			# replace every second pixel with second best color
+			for i in range(0, len(image), 2):
+				if v[i] > self.dither:
+					image[i] = palette[y[i]]
+
+		image = np.reshape(image, (width, height, depth))
 		return np.clip(image.astype("int"), 0, 255)
 
 	def _reduce(self, image):
