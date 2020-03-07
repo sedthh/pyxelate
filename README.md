@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 img = io.imread("cat.jpg")
 # generate pixel art that is 1/12 the size
 height, width, _ = img.shape 
-colors = 8
-dither = 0.
+colors = 5
+dither = False
 p = Pyxelate(height // 12, width // 12, colors, dither)
 img_small = p.convert(img)  # convert an image with these settings
 
@@ -36,11 +36,13 @@ The **Pyxelate()** class accepts the following init parameters:
 - **height**: the height of the result image (height was chosen to be first parameter to mirror the array representation)
 - **width**: the width of the result image
 - **color**: the number of colors (default is 8)
-- **dither**: the amont of dithering between 0. - 1. (defaults value is 1 / (color + 1) )
+- **dither**: apply dithering (default is True) 
 - **regenerate_palette**: if set to False, then the palette will only be generated once, and all future images will be generated using this original palette. This is useful for generating a sequence of images with the same palette (the default value is True, all images will have their own palettes).
 - **random_state**: the random state for the Bayesian Gaussian Mixture model (default is 0)
 
 Once the class is created, call **convert(image)** by passing a NumPy array representation of the image.  
+
+**NOTE:** the process is pretty time consuming, generating large pixel arts can take quite a while!
 
 ![Synthwave vibes](examples/f.png)
 
@@ -63,13 +65,12 @@ usage: pyx.py [-h] [-f scale down input image by factor] [-s scale up output ima
 
 If no **--output** was defined, a **pyxelated/** folder will be created for output images. 
 
+![Synthwave vibes](examples/outrun.png)
 
 ### Requirements
 
 The Pyxelate class requires Python 3.7+ and relies on the following libraries to run:
 - [skimage 0.16.2](https://scikit-image.org/)
 - [sklearn 0.22.1](https://scikit-learn.org/stable/)
-
-Limitations: the method does not support dithering, as it would most likely add noise to areas with color gradients, making edges less clear. 
 
 The source code is available under the MIT license.
