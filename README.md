@@ -1,11 +1,9 @@
-# Generate pixel arts from images
-Pyxelate is a Python class that downsamples images into 8-bit pixel arts.
+#Pyxelate downsamples images into 8-bit pixel art
 
 ![Definitely not cherry picking](examples/palm10.png)
 
-The method **does more than simply resizing an image with a reduced palette**!
-The class tires to iteratively approximate a pixel art by only sampling pixels based on the orientation of edges in the input image. 
-Then it uses unsupervised machine learning to generate the basis for an 8-bit color palette.  
+The method iteratively approximates a pixel art by sampling values based on the orientation of edges in the input image. 
+Then it applies unsupervised machine learning to generate the basis for an 8-bit color palette.  
 
 ### Installation
 
@@ -41,12 +39,12 @@ plt.show()
 ### API
 
 The **Pyxelate()** class accepts the following init parameters:
-- **height**: the height of the result image (height was chosen to be first parameter to mirror the array representation)
-- **width**: the width of the result image
+- **height**: the height of the result image (height was chosen to be first parameter to mirror the array representation).
+- **width**: the width of the result image.
 - **color**: the number of colors (default is 8). If the Bayesian Gaussian Mixture model did not converge try a different number of colors.  
-- **dither**: apply dithering (default is True) 
+- **dither**: apply dithering (default is True). 
 - **regenerate_palette**: if set to False, then the palette will only be generated once, and all future images will be generated using this original palette. This is useful for generating a sequence of images with the same palette (the default value is True, all images will have their own palettes).
-- **random_state**: the random state for the Bayesian Gaussian Mixture model (default is 0)
+- **random_state**: the random state for the Bayesian Gaussian Mixture model (default is 0).
 
 Once the class is created, call **convert(image)** by passing a NumPy array representation of the image.  
 

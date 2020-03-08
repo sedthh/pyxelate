@@ -12,7 +12,7 @@ from skimage.transform import resize
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn.exceptions import ConvergenceWarning
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 __version_info__ = tuple(int(num) for num in __version__.split('.'))
 
 class Pyxelate:
