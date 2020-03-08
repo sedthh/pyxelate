@@ -1,4 +1,4 @@
-#Pyxelate downsamples images into 8-bit pixel art
+# Pyxelate downsamples images into 8-bit pixel art
 
 ![Definitely not cherry picking](examples/palm10.png)
 
