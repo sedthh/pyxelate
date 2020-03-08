@@ -1,13 +1,19 @@
 # Generate pixel arts from images
-Pyxelate is a Python class that converts images into tiny pixel arts with limited color palettes.
+Pyxelate is a Python class that downsamples images into 8-bit pixel arts.
 
 ![Definitely not cherry picking](examples/palm10.png)
+
+The method **does more than simply resizing an image with a reduced palette**!
+The class tires to iteratively approximate a pixel art by only sampling pixels based on the orientation of edges in the input image. 
+Then it uses unsupervised machine learning to generate the basis for an 8-bit color palette.  
 
 ### Installation
 
 ```
 pip3 install git+https://github.com/sedthh/pyxelate.git
 ```
+
+![Synthwave vibes](examples/f.png)
 
 ### Example usage:
 ```python
@@ -44,13 +50,18 @@ Once the class is created, call **convert(image)** by passing a NumPy array repr
 
 **NOTE:** the process is pretty time consuming, generating large pixel arts can take quite a while!
 
-![Synthwave vibes](examples/f.png)
+![Synthwave vibes](examples/asthetic.png)
 
 ### Details
 
-The method applies a few computer vision functions and simple convolutions on images and selects pixels based on the calculated gradient's magnitude. 
-This was inspired by the [Histogram of Oriented Gradients](https://scikit-image.org/docs/dev/auto_examples/features_detection/plot_hog.html) method.
-Then a Gaussian Mixture model is fitted (instead of conventional K-means) to find a reduced palette based on its components.
+The method applies a few computer vision functions for preprocessing. Then simple convolutions are applied on the images. The downsampled areas are calculated based on their gradients' magnitudes and orientation. 
+The function was inspired by the [Histogram of Oriented Gradients](https://scikit-image.org/docs/dev/auto_examples/features_detection/plot_hog.html) method.
+Once it's done, a [Bayesian Gaussian Mixture](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html) model is fitted (instead of conventional K-means) to find a reduced palette. 
+Using the centroids of the overlapping gaussians as "mean" colors is an empirically better choice,
+as cluster centroids for rare colors would have less effect on the rest of the palette due to 
+their smaller covariances (allowing flatter gaussians to eventually take over). 
+Since it also predicts probabilities, iteratively polling from the first and second best prediction over a threshold allows simple dithering.   
+The dirichlet distributions will put less weight on unnecessary clusters as well.  
 
 ![Good boye resized](examples/corgi4.png)
 
