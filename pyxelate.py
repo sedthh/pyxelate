@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 from skimage.color.adapt_rgb import adapt_rgb, each_channel
 from skimage.util import view_as_blocks
@@ -9,6 +10,7 @@ from skimage.exposure import equalize_adapthist
 from skimage.transform import resize
 
 from sklearn.mixture import BayesianGaussianMixture
+from sklearn.exceptions import ConvergenceWarning
 
 __version__ = '1.1.1'
 __version_info__ = tuple(int(num) for num in __version__.split('.'))
@@ -73,11 +75,15 @@ class Pyxelate:
 		self.color = int(color)
 		if self.color < 2:
 			raise ValueError("The minimum number of colors is 2.")
+		elif self.color > 32:
+			raise ValueError("The maximum number of colors is 32.")
 		if dither:
 			self.dither = 1 / (self.color + 1)
 		else:
 			self.dither = 0.
 		self.regenerate_palette = bool(regenerate_palette)
+
+		# BGM
 		self.is_fitted = False
 		self.random_state = int(random_state)
 		self.model = BayesianGaussianMixture(n_components=self.color,
@@ -97,7 +103,16 @@ class Pyxelate:
 		# create sample for finding palette
 		if self.regenerate_palette or not self.is_fitted:
 			examples = resize(image, (32, 32), anti_aliasing=False).reshape(-1, 3).astype("int")
-			self.model.fit(examples)
+			# suppress warnings from sklearn
+			converge = True
+			with warnings.catch_warnings(record=True) as w:
+				# fit model
+				self.model.fit(examples)
+				if w and w[-1].category == ConvergenceWarning:
+					warnings.filterwarnings('ignore', category=ConvergenceWarning)
+					converge = False
+			if not converge:
+				warnings.warn("The model has failed to converge, try a different number of colors for better results!", Warning)
 			self.is_fitted = True
 
 		# resize image to 4 times the desired width and height
@@ -130,6 +145,7 @@ class Pyxelate:
 			pad = not bool(width % 2)
 			for i in range(0, len(image), 2):
 				if pad:
+					# make sure to alternate between starting positions
 					i += (i // width) % 2
 				if v[i] > self.dither:
 					image[i] = palette[y[i]]

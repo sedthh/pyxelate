@@ -21,12 +21,14 @@ from pyxelate import Pyxelate
 from skimage import io
 import matplotlib.pyplot as plt
 
-img = io.imread("cat.jpg")
-# generate pixel art that is 1/12 the size
+img = io.imread("blade_runner.jpg")
+# generate pixel art that is 1/14 the size
 height, width, _ = img.shape 
-colors = 5
-dither = False
-p = Pyxelate(height // 12, width // 12, colors, dither)
+factor = 14
+colors = 6
+dither = True
+
+p = Pyxelate(height // factor, width // factor, colors, dither)
 img_small = p.convert(img)  # convert an image with these settings
 
 _, axes = plt.subplots(1, 2, figsize=(16, 16))
@@ -34,14 +36,14 @@ axes[0].imshow(img)
 axes[1].imshow(img_small)
 plt.show()
 ``` 
-![meow.exe](examples/cat2.png)
+![Like pixels in the rain](examples/br.png)
 
 ### API
 
 The **Pyxelate()** class accepts the following init parameters:
 - **height**: the height of the result image (height was chosen to be first parameter to mirror the array representation)
 - **width**: the width of the result image
-- **color**: the number of colors (default is 8)
+- **color**: the number of colors (default is 8). If the Bayesian Gaussian Mixture model did not converge try a different number of colors.  
 - **dither**: apply dithering (default is True) 
 - **regenerate_palette**: if set to False, then the palette will only be generated once, and all future images will be generated using this original palette. This is useful for generating a sequence of images with the same palette (the default value is True, all images will have their own palettes).
 - **random_state**: the random state for the Bayesian Gaussian Mixture model (default is 0)
@@ -50,7 +52,7 @@ Once the class is created, call **convert(image)** by passing a NumPy array repr
 
 **NOTE:** the process is pretty time consuming, generating large pixel arts can take quite a while!
 
-![Synthwave vibes](examples/asthetic.png)
+![A-E-S-T-H-E-T-I-C](examples/asthetic.png)
 
 ### Details
 
