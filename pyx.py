@@ -15,12 +15,19 @@ def parse_arguments():
     parser.add_argument('-f', '--factor', required=False, metavar='factor', type=int, default=5, help='The factor by which the image should be downscaled. Defaults to 5.')
     parser.add_argument('-s', '--scaling', required=False, metavar='scaling', type=int, default=5, help='The factor by which the generated image should be upscaled. Defaults to 5.')
     parser.add_argument('-c', '--colors', required=False, metavar='colors', type=int, default=8, help='The amount of colors of the pixelated image. Defaults to 8.')
-    parser.add_argument('-d', '--dither', required=False, metavar='dither', type=bool, default=True, help='Allow dithering')
+    parser.add_argument('-d', '--dither', required=False, metavar='dither', type=str_as_bool, nargs='?', default=True, help='Allow dithering')
     parser.add_argument('-r', '--regenerate_palette', required=False, metavar='regenerate_palette', type=bool, default=True, help='Regenerate the palette for each image. Defaults to True.')
     parser.add_argument('-t', '--random_state', required=False, metavar='random_state', type=int, default=0, help='Sets the random state of the Bayesian Gaussian Mixture. Defaults to 0.')
     parser.add_argument('-i', '--input', required=False, metavar='path', type=str, default='', help='Path to single image or directory containing images for processing. Defaults <cwd>.')
     parser.add_argument('-o', '--output', required=False, metavar='path', type=str, default='', help='Path to the directory where the pixelated images are stored. Defaults to <cwd>/pyxelated')
     return parser.parse_args()
+
+
+def str_as_bool(val):
+    # interpret the string input as a boolean
+    if val.lower() in ("false", "none", "no", "0"):
+        return False
+    return True
 
 
 def get_file_list(path):
