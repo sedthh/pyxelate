@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='pyxelate',
-      version='1.1.2',
+      version='1.1.3',
       description='Pyxelate is a Python class that converts images into tiny pixel arts with limited color palettes.',
       url='http://github.com/sedthh/pyxelate',
       author='sedthh',

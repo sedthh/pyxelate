@@ -3,7 +3,7 @@ import warnings
 
 from skimage.color.adapt_rgb import adapt_rgb, each_channel
 from skimage.util import view_as_blocks
-from skimage.morphology import square
+from skimage.morphology import square, dilation
 from skimage.filters import median
 from skimage.color import rgb2hsv, hsv2rgb
 from skimage.exposure import equalize_adapthist
@@ -12,7 +12,7 @@ from skimage.transform import resize
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn.exceptions import ConvergenceWarning
 
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 __version_info__ = tuple(int(num) for num in __version__.split('.'))
 
 class Pyxelate:
@@ -65,7 +65,7 @@ class Pyxelate:
 
 	ITER = 2
 
-	def __init__(self, height, width, color=8, dither=True, regenerate_palette=True, random_state=0):
+	def __init__(self, height, width, color=8, dither=True, alpha=.6, regenerate_palette=True, random_state=0):
 		"""Create instance for generating similar pixel arts."""
 
 		self.height = int(height)
@@ -81,6 +81,7 @@ class Pyxelate:
 			self.dither = 1 / (self.color + 1)
 		else:
 			self.dither = 0.
+		self.alpha = float(alpha)
 		self.regenerate_palette = bool(regenerate_palette)
 
 		# BGM
@@ -96,13 +97,29 @@ class Pyxelate:
 
 	def convert(self, image):
 		"""Generate pixel art from image"""
+		# does the image have alpha channel?
+		if image.shape[2] == 4:
+			# remove artifacts from transparent edges
+			image = self._dilate(image)
+			# create alpha mask
+			mask = resize(image[:, :, 3], (self.height, self.width), anti_aliasing=True)
+			# mask for colors
+			color_mask = resize(image[:, :, 3], (32, 32), anti_aliasing=False).ravel()
+		else:
+			mask = None
+			color_mask = None
+
 		# apply adaptive contrast
-		image = equalize_adapthist(image) * 255 * 1.14
+		image = equalize_adapthist(image) * 255 * 1.14  # empirical magic number
 		image[image <= 8.] = 0.
 
 		# create sample for finding palette
 		if self.regenerate_palette or not self.is_fitted:
 			examples = resize(image, (32, 32), anti_aliasing=False).reshape(-1, 3).astype("int")
+			if color_mask is not None:
+				# transparent colors should be ignored
+				examples = examples[color_mask >= self.alpha]
+
 			# suppress warnings from sklearn
 			converge = True
 			with warnings.catch_warnings(record=True) as w:
@@ -128,8 +145,10 @@ class Pyxelate:
 
 		# increase hue and snap color values to multiples of 8
 		palette = rgb2hsv(self.model.means_.reshape(-1, 1, 3))
-		palette[:, :, 1] *= 1.14
+		palette[:, :, 1] *= 1.14  # empirical magic number
 		palette = hsv2rgb(palette).reshape(self.color, 3) // 8 * 8
+		palette[palette == 248] = 255  # clamping // 8 * 8 would rarely allow 255 values
+
 		# generate recolored image
 		image = palette[y]
 
@@ -151,7 +170,13 @@ class Pyxelate:
 					image[i] = palette[y[i]]
 
 		image = np.reshape(image, (height, width, depth))
-		return np.clip(image.astype("int"), 0, 255)
+		if mask is not None:
+			# use transparency from original image, but make it either 0 or 255
+			mask[mask >= self.alpha] = 255
+			mask[mask < self.alpha] = 0
+			image = np.dstack((image, mask))  # result has lost its alpha channel
+
+		return np.clip(image.astype("int"), 0, 255).astype("uint8")
 
 	def _reduce(self, image):
 		"""Apply convolutions on image ITER times and generate a smaller image
@@ -176,3 +201,17 @@ class Pyxelate:
 			return new_image
 
 		return _wrapper(image)
+
+	def _dilate(self, image):
+		"""Dilate semi-transparent edges to remove artifacts
+		(unwanted edges, caused by transparent pixels having different colors)"""
+
+		@adapt_rgb(each_channel)
+		def _wrapper(dim):
+			return dilation(dim, selem=square(4))
+
+		# use dilated pixels for semi-transparent ones
+		mask = image[:, :, 3]
+		alter = _wrapper(image[:, :, :3])
+		image[:, :, :3][mask < self.alpha] = alter[mask < self.alpha]
+		return image

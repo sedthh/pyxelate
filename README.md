@@ -43,6 +43,7 @@ The **Pyxelate()** class accepts the following init parameters:
 - **width**: the width of the result image.
 - **color**: the number of colors (default is 8). If the Bayesian Gaussian Mixture model did not converge try a different number of colors.  
 - **dither**: apply dithering (default is True). 
+- **alpha**: images with alpha channel will be converted in a way, that the pixels will either be transparent or visible above this threshold (default is .6).
 - **regenerate_palette**: if set to False, then the palette will only be generated once, and all future images will be generated using this original palette. This is useful for generating a sequence of images with the same palette (the default value is True, all images will have their own palettes).
 - **random_state**: the random state for the Bayesian Gaussian Mixture model (default is 0).
 
@@ -75,6 +76,8 @@ usage: pyx.py [-h] [-f scale down input image by factor] [-s scale up output ima
 ```
 
 If no **--output** was defined, a **pyxelated/** folder will be created for output images. 
+
+There is also a [basic GUI](https://github.com/jarreed0/pyxelated-gui) that runs the CLI from a Tkinter window.
 
 ![Synthwave vibes](examples/outrun.png)
 
