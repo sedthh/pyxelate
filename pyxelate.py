@@ -119,18 +119,7 @@ class Pyxelate:
 			if color_mask is not None:
 				# transparent colors should be ignored
 				examples = examples[color_mask >= self.alpha]
-
-			# suppress warnings from sklearn
-			converge = True
-			with warnings.catch_warnings(record=True) as w:
-				# fit model
-				self.model.fit(examples)
-				if w and w[-1].category == ConvergenceWarning:
-					warnings.filterwarnings('ignore', category=ConvergenceWarning)
-					converge = False
-			if not converge:
-				warnings.warn("The model has failed to converge, try a different number of colors for better results!", Warning)
-			self.is_fitted = True
+			self._fit_model(examples)
 
 		# resize image to 4 times the desired width and height
 		image = resize(image, (self.height * self.ITER * 2, self.width * self.ITER * 2), anti_aliasing=True)
@@ -177,6 +166,41 @@ class Pyxelate:
 			image = np.dstack((image, mask))  # result has lost its alpha channel
 
 		return np.clip(image.astype("int"), 0, 255).astype("uint8")
+
+	def palette_from_list(self, images):
+		"""Fit model to find palette using all images in list at once"""
+		if self.regenerate_palette:
+			warnings.warn("Warning, regenerate_palette=True will cause the generated palette to be lost while converting images!", Warning)
+		examples = []
+		color_masks = []
+		transparency = bool(images[0].shape[2] == 4)
+		# sample from all images
+		for image in images:
+			image = equalize_adapthist(image) * 255 * 1.14  # empirical magic number
+			image[image <= 8.] = 0.
+			examples.append(resize(image, (16, 16), anti_aliasing=False).reshape(-1, 3).astype("int"))
+			if transparency:
+				color_masks.append(resize(images[0][:, :, 3], (16, 16), anti_aliasing=False))
+		# concatenate to a single matrix
+		examples = np.concatenate(examples)
+		if transparency:
+			# transparent colors should be ignored
+			color_masks = np.concatenate(color_masks).ravel()
+			examples = examples[color_masks >= self.alpha]
+		self._fit_model(examples)
+
+	def _fit_model(self, X):
+		"""Fit model while suppressing warnings from sklearn"""
+		converge = True
+		with warnings.catch_warnings(record=True) as w:
+			# fit model
+			self.model.fit(X)
+			if w and w[-1].category == ConvergenceWarning:
+				warnings.filterwarnings('ignore', category=ConvergenceWarning)
+				converge = False
+		if not converge:
+			warnings.warn("The model has failed to converge, try a different number of colors for better results!", Warning)
+		self.is_fitted = True
 
 	def _reduce(self, image):
 		"""Apply convolutions on image ITER times and generate a smaller image

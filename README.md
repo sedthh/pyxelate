@@ -71,8 +71,9 @@ The dirichlet distributions will put less weight on unnecessary clusters as well
 ```pyx.py``` is the command line interface for the Pyxelate class and accepts a bunch of arguments to process multiple files one after another.
 
 ``` none
-usage: pyx.py [-h] [-f scale down input image by factor] [-s scale up output image by factor] [-c colors] [-d dither] 
-              [-r regenerate_palette] [-t random_state] [-i folder of input images] [-o folder of output images]
+usage: pyx.py [-h] [-i folder of input images] [-o folder of output images]
+              [-f scale down input image by factor] [-s scale up output image by factor] [-c colors] [-d dither] 
+              [-a alpha] [-r regenerate_palette] [-t random_state]
 ```
 
 If no **--output** was defined, a **pyxelated/** folder will be created for output images. 
