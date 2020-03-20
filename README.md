@@ -88,4 +88,10 @@ The Pyxelate class requires Python 3.7+ and relies on the following libraries to
 - [skimage 0.16.2](https://scikit-image.org/)
 - [sklearn 0.22.1](https://scikit-learn.org/stable/)
 
-The source code is available under the MIT license.
+### Contribution
+
+There are 2 known bottlenecks in the script caused by iterating over the image matrix. 
+If you can figure out a more efficient method (or are able to rewrite it as a GPU shader) it would be great! 
+
+The source code is available under the **MIT license** 
+but I would appreciate the credit if your creation uses Pyxelate!

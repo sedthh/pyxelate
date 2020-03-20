@@ -151,6 +151,7 @@ class Pyxelate:
 
 			# replace every second pixel with second best color
 			pad = not bool(width % 2)
+			# bottleneck
 			for i in range(0, len(image), 2):
 				if pad:
 					# make sure to alternate between starting positions
@@ -211,12 +212,13 @@ class Pyxelate:
 		def _wrapper(dim):
 			# apply median filter for noise reduction
 			dim = median(dim, square(4))
-			for i in range(self.ITER):
+			for _ in range(self.ITER):
 				h, w = dim.shape
 				h, w = h // 2, w // 2
 				new_image = np.zeros((h * w)).astype("int")
 				view = view_as_blocks(dim, (2, 2))
 				flatten = view.reshape(-1, 2, 2)
+				# bottleneck
 				for i, f in enumerate(flatten):
 					conv = np.abs(np.sum(np.multiply(self.CONVOLUTIONS, f.reshape(-1, 2, 2)).reshape(-1, 4), axis=1))
 					new_image[i] = np.mean(f[self.SOLUTIONS[np.argmax(conv)]])
