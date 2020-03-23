@@ -78,19 +78,56 @@ def str_as_bool(val):
     return True
 
 
+# exclude hidden files and directories
+f_all = 0
+f_excluded = 0
+
+def exclude_hidden(elm):
+    global f_excluded
+    if not any(i.startswith('.') for i in elm.parts):
+        return elm
+    f_excluded += 1
+    return False
+
+
+ # exclude directories and files without extension
+def with_extension(elm):
+    global f_excluded
+    if elm.is_file() and '.' in elm.name:
+        return elm
+    f_excluded += 1
+    return False
+
+
 def get_file_list(path):
+    global f_all
     path = Path(path)
     if path.is_dir():
-        # get all files and directories except hidden
-        tree = path.glob('**/[!.]*')
-        # generate file list without directories
-        file_names = [elm for elm in tree if elm.is_file()]
+        # get all files and directories
+        tree = list(path.glob('**/*'))
+        f_all = len(tree)
+        # filter files and directories
+        tree = list(filter(exclude_hidden, tree))
+        file_names = list(filter(with_extension, tree))
         return file_names
-    elif path.is_file():
+    elif path.is_file() and '.' in path.name:
         return [path]
     else:
-        print("Path points to non image file.")
+        print("Path points to " + red("non image") + " file.")
         sys.exit(1)
+
+
+# define CLI colors and create functions
+def style_def(func, ansi):
+    exec(f'''def {func}(input):
+        return "{ansi}" + str(input) + "\u001b[0m"
+    ''', globals())
+
+style_def('green', '\u001b[32m')
+style_def('red', '\u001b[31m')
+style_def('mag', '\u001b[35m')
+style_def('dim', '\u001b[37;2m')
+
 
 
 if __name__ == "__main__":
@@ -106,7 +143,15 @@ if __name__ == "__main__":
         output_dir = Path(args.output)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Writing files to {output_dir}")
+    # at least one relevant file is required to run
+    if image_files:
+        # display some information at the start
+        o_path, o_base = str(output_dir).rsplit('/', 1)
+        print(green(len(image_files)) + " relevant files found | " +
+            red(f_excluded) + " excluded")
+        print("Writing files to " + dim(o_path + '/') + o_base)
+    else:
+        print(red(len(image_files)) + " relevant files found")
 
     # height and width are getting set per image, this are just placeholders
     p = Pyxelate( 1, 1, color=args.colors, dither=args.dither,
@@ -115,15 +160,28 @@ if __name__ == "__main__":
 
     # loop over all images in the directory
     for image_file in image_files:
-        image = io.imread(image_file)
+        # get the path, file name, and extension
+        f_name, f_ext = str(image_file).rsplit('.', 1)
+        if '/' in f_name:
+            f_path, f_name = f_name.rsplit('/', 1)
+            f_path += "/"
+        else:
+            f_path = ""
+
+        try:
+            image = io.imread(image_file)
+        except ValueError:
+            # when the file is not an image just move to the next file
+            print("\tSkipping " + red("unsupported") + ":\t" +
+                dim(f_path) + f_name + '.' + red(f_ext))
+            continue
         base = str(image_file.stem) + ".png"
 
-        # when the file is not an image just move to the next file
-        if len(image) == 0:
-            print(f"Skipping\t{image_file}")
-            continue
+        print("\tProcessing image:\t" + dim(f_path) + f_name + '.' + f_ext)
 
-        print(f"Processing\t{image_file}")
+        # try to predict the time
+
+        # redraw status bar
 
         outfile = output_dir / base
 
