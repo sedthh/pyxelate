@@ -1,8 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import argparse
 import sys
+import time
+import warnings
 from pathlib import Path
 from pyxelate import Pyxelate
 from numpy import uint8
@@ -117,6 +119,17 @@ def get_file_list(path):
         sys.exit(1)
 
 
+def parse_path(file):
+    f_name, f_ext = str(file).rsplit('.', 1)
+    f_name = f_name.replace(str(Path(args.input)) + '/', '')
+    if '/' in f_name:
+        f_path, f_name = f_name.rsplit('/', 1)
+        f_path = '/' + f_path + '/'
+    else:
+        f_path = ""
+    return [f_path, f_name, f_ext]
+
+
 # define CLI colors and create functions
 def style_def(func, ansi):
     exec(f'''def {func}(input):
@@ -128,6 +141,41 @@ style_def('red', '\u001b[31m')
 style_def('mag', '\u001b[35m')
 style_def('dim', '\u001b[37;2m')
 
+
+# status bar logic
+cur_image = 0
+time_img = []
+t_up = '\x1b[1A'
+t_erase = '\x1b[2K'
+avg_last_vals = 10
+
+def sec_to_time(sec):
+    n, m, s = 0, 0, 0
+    m, s = divmod(sec, 60)
+    h, m = divmod(m, 60)
+    return f"{h:d}:{m:02d}:{s:02d}"
+
+def bar_redraw(i_cur, i_all, t_pass, t_last):
+    t_pass = round(t_pass)
+    # print bar
+    percent = round(i_cur / i_all * 100, 1)
+    p_int = round(i_cur / i_all * 100) // 2
+    b = "[ " + "•" * (p_int) + dim("-") * (50 - p_int) + " ] "
+    b += str(percent) + " %"
+    print(b)
+    # print status
+    r = "Done " + green(str(i_cur)) + '/' + str(i_all) + dim(" | ")
+    r += "Elapsed: " + sec_to_time(t_pass) + dim(" | ") + "Remaining: "
+    # averaging requires at least 1 value
+    if len(t_last) > 0:
+        t_avg = sum(t_last) / len(t_last)
+        rem = round(t_avg * (i_all - i_cur))
+        r += sec_to_time(rem)
+    else:
+        r += "Calculating..."
+    print(r)
+    # raise the carriage two lines up and return it
+    print(t_up * 2 + '\r', end="")
 
 
 if __name__ == "__main__":
@@ -143,47 +191,60 @@ if __name__ == "__main__":
         output_dir = Path(args.output)
         output_dir.mkdir(parents=True, exist_ok=True)
 
+    # get input and output paths
+    input_dir = Path(args.input) if args.input else Path.cwd()
+    o_path, o_base = str(output_dir).rsplit('/', 1)
+    i_path, i_base = str(input_dir).rsplit('/', 1)
+
     # at least one relevant file is required to run
     if image_files:
-        # display some information at the start
-        o_path, o_base = str(output_dir).rsplit('/', 1)
         print(green(len(image_files)) + " relevant files found | " +
             red(f_excluded) + " excluded")
-        print("Writing files to " + dim(o_path + '/') + o_base)
     else:
         print(red(len(image_files)) + " relevant files found")
+        sys.exit(1)
+
+    # display some information at the start
+    print("Reading files from " + dim(i_path + '/') + i_base)
+    print("Writing files to   " + dim(o_path + '/') + o_base)
 
     # height and width are getting set per image, this are just placeholders
-    p = Pyxelate( 1, 1, color=args.colors, dither=args.dither,
+    p = Pyxelate(1, 1, color=args.colors, dither=args.dither,
         alpha=args.alpha, regenerate_palette=args.regenerate_palette,
         random_state=args.random_state)
 
     # loop over all images in the directory
     for image_file in image_files:
         # get the path, file name, and extension
-        f_name, f_ext = str(image_file).rsplit('.', 1)
-        if '/' in f_name:
-            f_path, f_name = f_name.rsplit('/', 1)
-            f_path += "/"
-        else:
-            f_path = ""
+        base = str(image_file.stem) + ".png"
+        outfile = output_dir / base
+        f_path, f_name, f_ext = parse_path(image_file)
+        cur_image += 1
 
+        # get the time of the last iteration to calculate the remaining
+        if 'img_end' in globals():
+            if len(time_img) == avg_last_vals:
+                del time_img[0]
+                time_img.append(round(img_end - img_start, 1))
+            else:
+                time_img.append(round(img_end - img_start, 1))
+        img_start = time.time()
+
+        # the file format must be supported by skimage
         try:
             image = io.imread(image_file)
         except ValueError:
             # when the file is not an image just move to the next file
-            print("\tSkipping " + red("unsupported") + ":\t" +
-                dim(f_path) + f_name + '.' + red(f_ext))
+            print(t_erase + "\tSkipping " + red("unsupported") +
+                ":\t" + dim(f_path) + f_name + '.' + red(f_ext))
+            bar_redraw(cur_image, len(image_files), time.process_time(), time_img)
             continue
-        base = str(image_file.stem) + ".png"
 
-        print("\tProcessing image:\t" + dim(f_path) + f_name + '.' + f_ext)
-
-        # try to predict the time
+        print(t_erase + "\tProcessing image:\t" + dim(f_path) +
+            f_name + '.' + f_ext)
 
         # redraw status bar
-
-        outfile = output_dir / base
+        bar_redraw(cur_image, len(image_files), time.process_time(), time_img)
 
         # get image dimensions
         height, width, _ = image.shape
@@ -203,4 +264,17 @@ if __name__ == "__main__":
                 )
 
         # finally save the image
-        io.imsave(outfile, pyxelated.astype(uint8))
+        warnings.filterwarnings("error")
+        try:
+            io.imsave(outfile, pyxelated.astype(uint8))
+        except UserWarning as e:
+            re = "/".join([o_path, o_base, f_name]) + '.' + f_ext
+            e = str(e).replace(re, "").strip()
+            print(t_erase + mag("\tWarning: ") + "It " + e)
+
+            warnings.filterwarnings("ignore")
+            io.imsave(outfile, pyxelated.astype(uint8))
+
+        img_end = time.time()
+
+    print('\n')
