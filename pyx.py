@@ -3,8 +3,8 @@
 
 import argparse
 import sys
-import time
 import warnings
+import time as t
 from pathlib import Path
 from pyxelate import Pyxelate
 from numpy import uint8
@@ -121,12 +121,17 @@ def get_file_list(path):
 
 def parse_path(file):
     f_name, f_ext = str(file).rsplit('.', 1)
-    f_name = f_name.replace(str(Path(args.input)) + '/', '')
-    if '/' in f_name:
+    if str(Path(args.input)) == '.':
+        f_name = '/' + f_name
+    try:
         f_path, f_name = f_name.rsplit('/', 1)
-        f_path = '/' + f_path + '/'
-    else:
+    except ValueError:
         f_path = ""
+    if str(Path(args.input)) == str(file):
+        f_path = ""
+    re = str(Path(args.input))
+    f_path = f_path.replace(re, "")
+    f_path += '/' if f_path else ''
     return [f_path, f_name, f_ext]
 
 
@@ -143,7 +148,7 @@ style_def('dim', '\u001b[37;2m')
 
 
 # status bar logic
-cur_image = 0
+cur_file = 0
 time_img = []
 t_up = '\x1b[1A'
 t_erase = '\x1b[2K'
@@ -155,8 +160,9 @@ def sec_to_time(sec):
     h, m = divmod(m, 60)
     return f"{h:d}:{m:02d}:{s:02d}"
 
-def bar_redraw(i_cur, i_all, t_pass, t_last):
+def bar_redraw(i_cur, i_all, t_pass, t_last, last=False):
     t_pass = round(t_pass)
+    i_cur = i_cur - 1 if not last else i_cur
     # print bar
     percent = round(i_cur / i_all * 100, 1)
     p_int = round(i_cur / i_all * 100) // 2
@@ -172,16 +178,19 @@ def bar_redraw(i_cur, i_all, t_pass, t_last):
         rem = round(t_avg * (i_all - i_cur))
         r += sec_to_time(rem)
     else:
-        r += "Calculating..."
+        r += "Calculating..." if not last else sec_to_time(0)
+    r = r if not last else t_erase + r
     print(r)
     # raise the carriage two lines up and return it
-    print(t_up * 2 + '\r', end="")
+    if not last:
+        print(t_up * 2 + '\r', end="")
 
 
 if __name__ == "__main__":
     # get arguments and file list
     args = parse_arguments()
     image_files = get_file_list(args.input)
+    all_files = len(image_files)
 
     # use the output directory defined by args
     if not args.output:
@@ -219,7 +228,7 @@ if __name__ == "__main__":
         base = str(image_file.stem) + ".png"
         outfile = output_dir / base
         f_path, f_name, f_ext = parse_path(image_file)
-        cur_image += 1
+        cur_file += 1
 
         # get the time of the last iteration to calculate the remaining
         if 'img_end' in globals():
@@ -228,7 +237,7 @@ if __name__ == "__main__":
                 time_img.append(round(img_end - img_start, 1))
             else:
                 time_img.append(round(img_end - img_start, 1))
-        img_start = time.time()
+        img_start = t.time()
 
         # the file format must be supported by skimage
         try:
@@ -237,14 +246,14 @@ if __name__ == "__main__":
             # when the file is not an image just move to the next file
             print(t_erase + "\tSkipping " + red("unsupported") +
                 ":\t" + dim(f_path) + f_name + '.' + red(f_ext))
-            bar_redraw(cur_image, len(image_files), time.process_time(), time_img)
+            bar_redraw(cur_file, all_files, t.process_time(), time_img)
             continue
 
         print(t_erase + "\tProcessing image:\t" + dim(f_path) +
             f_name + '.' + f_ext)
 
         # redraw status bar
-        bar_redraw(cur_image, len(image_files), time.process_time(), time_img)
+        bar_redraw(cur_file, all_files, t.process_time(), time_img)
 
         # get image dimensions
         height, width, _ = image.shape
@@ -275,6 +284,6 @@ if __name__ == "__main__":
             warnings.filterwarnings("ignore")
             io.imsave(outfile, pyxelated.astype(uint8))
 
-        img_end = time.time()
+        img_end = t.time()
 
-    print('\n')
+    bar_redraw(cur_file, all_files, t.process_time(), time_img, 1)
