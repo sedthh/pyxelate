@@ -79,14 +79,13 @@ def parse_arguments():
 
 
 def str_as_bool(val):
-    # interpret the string input as a boolean
+    # Interpret the string input as a boolean
     if val.lower() in ("false", "none", "no", "0"):
         return False
     return True
 
 
-# exclude hidden files and directories
-f_all = 0
+# Exclude hidden files and directories
 f_excluded = 0
 
 def exclude_hidden(elm):
@@ -97,7 +96,7 @@ def exclude_hidden(elm):
     return False
 
 
- # exclude directories and files without extension
+ # Exclude directories and files without extension
 def with_extension(elm):
     global f_excluded
     if elm.is_file() and '.' in elm.name:
@@ -107,13 +106,11 @@ def with_extension(elm):
 
 
 def get_file_list(path):
-    global f_all
     path = Path(path)
     if path.is_dir():
-        # get all files and directories
+        # Get all files and directories
         tree = list(path.glob('**/*'))
-        f_all = len(tree)
-        # filter files and directories
+        # Filter files and directories
         tree = list(filter(exclude_hidden, tree))
         file_names = list(filter(with_extension, tree))
         return file_names
@@ -126,21 +123,21 @@ def get_file_list(path):
 
 def parse_path(file):
     f_name, f_ext = str(file).rsplit('.', 1)
-    if str(Path(args.input)) == '.':
+    re = str(Path(args.input))
+    if re == '.':
         f_name = '/' + f_name
     try:
         f_path, f_name = f_name.rsplit('/', 1)
     except ValueError:
         f_path = ""
-    if str(Path(args.input)) == str(file):
+    if re == str(file):
         f_path = ""
-    re = str(Path(args.input))
     f_path = f_path.replace(re, "")
     f_path += '/' if f_path else ''
     return [f_path, f_name, f_ext]
 
 
-# define CLI colors and create functions
+# Define CLI colors and create functions
 def style_def(func, ansi):
     exec(f'''def {func}(input):
         return "{ansi}" + str(input) + "\u001b[0m"
@@ -152,14 +149,14 @@ style_def('mag', '\u001b[35m')
 style_def('dim', '\u001b[37;2m')
 
 
-# status bar logic
+# Status bar logic
 cur_file = 0
 warn_cnt = 0
 time_img = []
+avg_last_vals = 10
 t_up = '\x1b[1A'
 t_erase = '\x1b[2K'
 bar_rmv = '\n' + t_erase + t_up + t_erase
-avg_last_vals = 10
 
 def sec_to_time(sec):
     n, m, s = 0, 0, 0
@@ -170,29 +167,31 @@ def sec_to_time(sec):
 def bar_redraw(last=False):
     t_pass = round(t.process_time())
     i_cur = cur_file - 1
-    # print bar
+    # Print bar
     percent = round(i_cur / all_files * 100, 1)
     p_int = round(i_cur / all_files * 100) // 2
     b = "[ " + "•" * (p_int) + dim("-") * (50 - p_int) + " ] "
     b += str(percent) + " %"
     print(b)
-    # print status
+    # Print status
     r = "Done " + green(str(i_cur)) + '/' + str(all_files) + dim(" | ")
     if args.warnings:
         r += "Warnings: " + mag(str(warn_cnt)) + dim(" | ")
     r += "Elapsed: " + sec_to_time(t_pass) + dim(" | ") + "Remaining: "
-    # averaging requires at least 1 value
-    if len(time_img) > 0:
+    # Remaining time. Averaging requires at least 1 value
+    if len(time_img) > 0 and not last:
         t_avg = sum(time_img) / len(time_img)
         rem = round(t_avg * (all_files - i_cur))
         r += sec_to_time(rem)
     else:
         r += "Calculating..." if not last else sec_to_time(0)
-    r = r if not last else t_erase + r
+    # Adding escape codes depending on the passed argument
+    if last:
+        r = bar_rmv + r
+    else:
+        # Raise the carriage two lines up and return it
+        r = r + t_up * 2 + '\r'
     print(r)
-    # raise the carriage two lines up and return it
-    if not last:
-        print(t_up * 2 + '\r', end="")
 
 
 def print_warn(warn):
@@ -204,12 +203,12 @@ def print_warn(warn):
 
 
 if __name__ == "__main__":
-    # get arguments and file list
+    # Get arguments and file list
     args = parse_arguments()
     image_files = get_file_list(args.input)
     all_files = len(image_files)
 
-    # use the output directory defined by args
+    # Use the output directory defined by args
     if not args.output:
         output_dir = Path.cwd() / "pyxelated"
         output_dir.mkdir(exist_ok=True)
@@ -217,12 +216,12 @@ if __name__ == "__main__":
         output_dir = Path(args.output)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    # get input and output paths
+    # Get input and output paths
     input_dir = Path(args.input) if args.input else Path.cwd()
     o_path, o_base = str(output_dir).rsplit('/', 1)
     i_path, i_base = str(input_dir).rsplit('/', 1)
 
-    # at least one relevant file is required to run
+    # At least one relevant file is required to run
     if image_files:
         print(green(len(image_files)) + " relevant files found | " +
             red(f_excluded) + " excluded")
@@ -230,24 +229,24 @@ if __name__ == "__main__":
         print(red(len(image_files)) + " relevant files found")
         sys.exit(1)
 
-    # display some information at the start
+    # Display some information at the start
     print("Reading files from " + dim(i_path + '/') + i_base)
     print("Writing files to   " + dim(o_path + '/') + o_base)
 
-    # height and width are getting set per image, this are just placeholders
+    # Height and width are getting set per image, this are just placeholders
     p = Pyxelate(1, 1, color=args.colors, dither=args.dither,
         alpha=args.alpha, regenerate_palette=args.regenerate_palette,
         random_state=args.random_state)
 
-    # loop over all images in the directory
+    # Loop over all images in the directory
     for image_file in image_files:
-        # get the path, file name, and extension
+        # Get the path, file name, and extension
         base = str(image_file.stem) + ".png"
         outfile = output_dir / base
         f_path, f_name, f_ext = parse_path(image_file)
         cur_file += 1
 
-        # get the time of the last iteration to calculate the remaining
+        # Get the time of the last iteration to calculate the remaining
         if 'img_end' in globals():
             if len(time_img) == avg_last_vals:
                 del time_img[0]
@@ -256,11 +255,11 @@ if __name__ == "__main__":
                 time_img.append(round(img_end - img_start, 1))
         img_start = t.time()
 
-        # the file format must be supported by skimage
+        # The file format must be supported by skimage
         try:
             image = io.imread(image_file)
         except ValueError:
-            # when the file is not an image just move to the next file
+            # When the file is not an image just move to the next file
             print(bar_rmv + "\tSkipping " + red("unsupported") +
                 ":\t" + dim(f_path) + f_name + '.' + red(f_ext))
             bar_redraw()
@@ -269,13 +268,13 @@ if __name__ == "__main__":
         print(bar_rmv + "\tProcessing image:\t" + dim(f_path) +
             f_name + '.' + f_ext)
 
-        # redraw status bar
+        # Redraw status bar
         bar_redraw()
 
-        # get image dimensions
+        # Get image dimensions
         height, width, _ = image.shape
 
-        # apply the dimensions to Pyxelate
+        # Apply the dimensions to Pyxelate
         p.height = height // args.factor
         p.width = width // args.factor
 
@@ -292,7 +291,7 @@ if __name__ == "__main__":
             warnings.filterwarnings("ignore")
             pyxelated = p.convert(image)
 
-        # scale the image up if so requested
+        # Scale the image up if so requested
         if args.scaling > 1:
             pyxelated = transform.resize(pyxelated, (
                 (height // args.factor) * args.scaling,
@@ -301,7 +300,7 @@ if __name__ == "__main__":
                 preserve_range=True, order=0
             )
 
-        # finally save the image
+        # Finally save the image
         try:
             warnings.filterwarnings("error")
             io.imsave(outfile, pyxelated.astype(uint8))
