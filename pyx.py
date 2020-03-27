@@ -216,11 +216,6 @@ if __name__ == "__main__":
         output_dir = Path(args.output)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get input and output paths
-    input_dir = Path(args.input) if args.input else Path.cwd()
-    o_path, o_base = str(output_dir).rsplit('/', 1)
-    i_path, i_base = str(input_dir).rsplit('/', 1)
-
     # At least one relevant file is required to run
     if image_files:
         print(green(len(image_files)) + " relevant files found | " +
@@ -229,9 +224,20 @@ if __name__ == "__main__":
         print(red(len(image_files)) + " relevant files found")
         sys.exit(1)
 
-    # Display some information at the start
-    print("Reading files from " + dim(i_path + '/') + i_base)
-    print("Writing files to   " + dim(o_path + '/') + o_base)
+    # Get input and output paths
+    # And display some information at the start
+    input_dir = Path(args.input) if args.input else Path.cwd()
+    if "/" in str(output_dir):
+        o_path, o_base = str(output_dir).rsplit('/', 1)
+        print("Writing files to   " + dim(o_path + '/') + o_base)        
+    else:
+        print("Reading files from " + str(output_dir))
+    
+    if "/" in str(input_dir):
+        i_path, i_base = str(input_dir).rsplit('/', 1)    
+        print("Reading files from " + dim(i_path + '/') + i_base)
+    else:
+        print("Reading files from " + dim(str(Path.cwd())) + "/" + str(input_dir))
 
     # Height and width are getting set per image, this are just placeholders
     p = Pyxelate(1, 1, color=args.colors, dither=args.dither,
