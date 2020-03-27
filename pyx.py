@@ -18,70 +18,74 @@ def parse_arguments():
     )
     parser.add_argument(
         '-f', '--factor',
-        required=False, metavar='factor', type=int, default=5,
+        required=False, metavar='int', type=int, default=5, nargs='?',
         help='''The factor by which the image should be downscaled.
         Defaults to 5.'''
     )
     parser.add_argument(
         '-s', '--scaling',
-        required=False, metavar='scaling', type=int, default=5,
+        required=False, metavar='int', type=int, default=5, nargs='?',
         help='''The factor by which the generated image should be
         upscaled. Defaults to 5.'''
     )
     parser.add_argument(
         '-c', '--colors',
-        required=False, metavar='colors', type=int, default=8,
+        required=False, metavar='2-32', type=int, default=8, nargs='?',
         help='''The amount of colors of the pixelated image. Defaults
         to 8.'''
     )
     parser.add_argument(
         '-d', '--dither',
-        required=False, metavar='dither', type=str_as_bool, nargs='?',
+        required=False, metavar='bool', type=str_as_bool, nargs='?',
         default=True, help='Allow dithering. Defaults to True.'
     )
     parser.add_argument(
         '-a', '--alpha',
-        required=False, metavar='alpha', type=float, default=.6,
-        help='''Threshold for visibility for images with alpha channel.
-        Defaults to .6.'''
+        required=False, metavar='threshold', type=float, default=.6,
+        nargs='?', help='''Threshold for visibility for images with
+        alpha channel. Defaults to .6.'''
     )
     parser.add_argument(
         '-r', '--regenerate_palette',
-        required=False, metavar='regenerate_palette', type=bool,
+        required=False, metavar='bool', type=bool, nargs='?',
         default=True, help='''Regenerate the palette for each image.
         Defaults to True.'''
     )
     parser.add_argument(
         '-t', '--random_state',
-        required=False, metavar='random_state', type=int, default=0,
+        required=False, metavar='int', type=int, default=0, nargs='?',
         help='''Sets the random state of the Bayesian Gaussian Mixture.
-
         Defaults to 0.'''
     )
     parser.add_argument(
         '-i', '--input',
-        required=False, metavar='path', type=str, default='',
+        required=False, metavar='path', type=str, default='', nargs='?',
         help='''Path to single image or directory containing images for
         processing. Defaults <cwd>.'''
     )
     parser.add_argument(
         '-o', '--output',
-        required=False, metavar='path', type=str, default='',
+        required=False, metavar='path', type=str, default='', nargs='?',
         help='''Path to the directory where the pixelated images are
         stored. Defaults to <cwd>/pyxelated'''
+    )
+    parser.add_argument(
+        '-w', '--warnings',
+        required=False, metavar='bool', type=str_as_bool, nargs='?',
+        default=True, help='''Outputs non-critical library warnings.
+        Defaults to True.'''
     )
     return parser.parse_args()
 
 
 def str_as_bool(val):
-    # interpret the string input as a boolean
+    # Interpret the string input as a boolean
     if val.lower() in ("false", "none", "no", "0"):
         return False
     return True
 
 
-# exclude hidden files and directories
-f_all = 0
+# Exclude hidden files and directories
 f_excluded = 0
 
 def exclude_hidden(elm):
@@ -92,7 +96,7 @@ def exclude_hidden(elm):
     return False
 
 
- # exclude directories and files without extension
+ # Exclude directories and files without extension
 def with_extension(elm):
     global f_excluded
     if elm.is_file() and '.' in elm.name:
@@ -102,13 +106,11 @@ def with_extension(elm):
 
 
 def get_file_list(path):
-    global f_all
     path = Path(path)
     if path.is_dir():
-        # get all files and directories
+        # Get all files and directories
         tree = list(path.glob('**/*'))
-        f_all = len(tree)
-        # filter files and directories
+        # Filter files and directories
         tree = list(filter(exclude_hidden, tree))
         file_names = list(filter(with_extension, tree))
         return file_names
@@ -121,21 +123,21 @@ def get_file_list(path):
 
 def parse_path(file):
     f_name, f_ext = str(file).rsplit('.', 1)
-    if str(Path(args.input)) == '.':
+    re = str(Path(args.input))
+    if re == '.':
         f_name = '/' + f_name
     try:
         f_path, f_name = f_name.rsplit('/', 1)
     except ValueError:
         f_path = ""
-    if str(Path(args.input)) == str(file):
+    if re == str(file):
         f_path = ""
-    re = str(Path(args.input))
     f_path = f_path.replace(re, "")
     f_path += '/' if f_path else ''
     return [f_path, f_name, f_ext]
 
 
-# define CLI colors and create functions
+# Define CLI colors and create functions
 def style_def(func, ansi):
     exec(f'''def {func}(input):
         return "{ansi}" + str(input) + "\u001b[0m"
@@ -147,12 +149,14 @@ style_def('mag', '\u001b[35m')
 style_def('dim', '\u001b[37;2m')
 
 
-# status bar logic
+# Status bar logic
 cur_file = 0
+warn_cnt = 0
 time_img = []
+avg_last_vals = 10
 t_up = '\x1b[1A'
 t_erase = '\x1b[2K'
-avg_last_vals = 10
+bar_rmv = '\n' + t_erase + t_up + t_erase
 
 def sec_to_time(sec):
     n, m, s = 0, 0, 0
@@ -160,39 +164,51 @@ def sec_to_time(sec):
     h, m = divmod(m, 60)
     return f"{h:d}:{m:02d}:{s:02d}"
 
-def bar_redraw(i_cur, i_all, t_pass, t_last, last=False):
-    t_pass = round(t_pass)
-    i_cur = i_cur - 1 if not last else i_cur
-    # print bar
-    percent = round(i_cur / i_all * 100, 1)
-    p_int = round(i_cur / i_all * 100) // 2
+def bar_redraw(last=False):
+    t_pass = round(t.process_time())
+    i_cur = cur_file - 1
+    # Print bar
+    percent = round(i_cur / all_files * 100, 1)
+    p_int = round(i_cur / all_files * 100) // 2
     b = "[ " + "•" * (p_int) + dim("-") * (50 - p_int) + " ] "
     b += str(percent) + " %"
     print(b)
-    # print status
-    r = "Done " + green(str(i_cur)) + '/' + str(i_all) + dim(" | ")
+    # Print status
+    r = "Done " + green(str(i_cur)) + '/' + str(all_files) + dim(" | ")
+    if args.warnings:
+        r += "Warnings: " + mag(str(warn_cnt)) + dim(" | ")
     r += "Elapsed: " + sec_to_time(t_pass) + dim(" | ") + "Remaining: "
-    # averaging requires at least 1 value
-    if len(t_last) > 0:
-        t_avg = sum(t_last) / len(t_last)
-        rem = round(t_avg * (i_all - i_cur))
+    # Remaining time. Averaging requires at least 1 value
+    if len(time_img) > 0 and not last:
+        t_avg = sum(time_img) / len(time_img)
+        rem = round(t_avg * (all_files - i_cur))
         r += sec_to_time(rem)
     else:
         r += "Calculating..." if not last else sec_to_time(0)
-    r = r if not last else t_erase + r
+    # Adding escape codes depending on the passed argument
+    if last:
+        r = bar_rmv + r
+    else:
+        # Raise the carriage two lines up and return it
+        r = r + t_up * 2 + '\r'
     print(r)
-    # raise the carriage two lines up and return it
-    if not last:
-        print(t_up * 2 + '\r', end="")
+
+
+def print_warn(warn):
+    if str(warn) and args.warnings:
+        re = "/".join([o_path, o_base, f_name]) + '.' + f_ext
+        warn = str(warn).replace(re, "").strip().capitalize()
+        print(bar_rmv + mag("\tWarning: ") + warn)
+        bar_redraw()
 
 
 if __name__ == "__main__":
-    # get arguments and file list
+    # Get arguments and file list
     args = parse_arguments()
     image_files = get_file_list(args.input)
     all_files = len(image_files)
 
-    # use the output directory defined by args
+    # Use the output directory defined by args
     if not args.output:
         output_dir = Path.cwd() / "pyxelated"
         output_dir.mkdir(exist_ok=True)
@@ -200,12 +216,12 @@ if __name__ == "__main__":
         output_dir = Path(args.output)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    # get input and output paths
+    # Get input and output paths
     input_dir = Path(args.input) if args.input else Path.cwd()
     o_path, o_base = str(output_dir).rsplit('/', 1)
     i_path, i_base = str(input_dir).rsplit('/', 1)
 
-    # at least one relevant file is required to run
+    # At least one relevant file is required to run
     if image_files:
         print(green(len(image_files)) + " relevant files found | " +
             red(f_excluded) + " excluded")
@@ -213,24 +229,24 @@ if __name__ == "__main__":
         print(red(len(image_files)) + " relevant files found")
         sys.exit(1)
 
-    # display some information at the start
+    # Display some information at the start
     print("Reading files from " + dim(i_path + '/') + i_base)
     print("Writing files to   " + dim(o_path + '/') + o_base)
 
-    # height and width are getting set per image, this are just placeholders
+    # Height and width are getting set per image, this are just placeholders
     p = Pyxelate(1, 1, color=args.colors, dither=args.dither,
         alpha=args.alpha, regenerate_palette=args.regenerate_palette,
         random_state=args.random_state)
 
-    # loop over all images in the directory
+    # Loop over all images in the directory
     for image_file in image_files:
-        # get the path, file name, and extension
+        # Get the path, file name, and extension
         base = str(image_file.stem) + ".png"
         outfile = output_dir / base
         f_path, f_name, f_ext = parse_path(image_file)
         cur_file += 1
 
-        # get the time of the last iteration to calculate the remaining
+        # Get the time of the last iteration to calculate the remaining
         if 'img_end' in globals():
             if len(time_img) == avg_last_vals:
                 del time_img[0]
@@ -239,51 +255,66 @@ if __name__ == "__main__":
                 time_img.append(round(img_end - img_start, 1))
         img_start = t.time()
 
-        # the file format must be supported by skimage
+        # The file format must be supported by skimage
         try:
             image = io.imread(image_file)
         except ValueError:
-            # when the file is not an image just move to the next file
-            print(t_erase + "\tSkipping " + red("unsupported") +
+            # When the file is not an image just move to the next file
+            print(bar_rmv + "\tSkipping " + red("unsupported") +
                 ":\t" + dim(f_path) + f_name + '.' + red(f_ext))
-            bar_redraw(cur_file, all_files, t.process_time(), time_img)
+            bar_redraw()
             continue
 
-        print(t_erase + "\tProcessing image:\t" + dim(f_path) +
+        print(bar_rmv + "\tProcessing image:\t" + dim(f_path) +
             f_name + '.' + f_ext)
 
-        # redraw status bar
-        bar_redraw(cur_file, all_files, t.process_time(), time_img)
+        # Redraw status bar
+        bar_redraw()
 
-        # get image dimensions
+        # Get image dimensions
         height, width, _ = image.shape
 
-        # apply the dimensions to Pyxelate
+        # Apply the dimensions to Pyxelate
         p.height = height // args.factor
         p.width = width // args.factor
-        pyxelated = p.convert(image)
 
-        # scale the image up if so requested
+        try:
+            warnings.filterwarnings("error")
+            pyxelated = p.convert(image)
+        except KeyboardInterrupt:
+            print(bar_rmv + "Cancelled with " + red("Ctrl+C"))
+            bar_redraw(1)
+            sys.exit(0)
+        except BaseException as e:
+            warn_cnt += 1
+            print_warn(e)
+            warnings.filterwarnings("ignore")
+            pyxelated = p.convert(image)
+
+        # Scale the image up if so requested
         if args.scaling > 1:
             pyxelated = transform.resize(pyxelated, (
                 (height // args.factor) * args.scaling,
                 (width // args.factor) * args.scaling),
                 anti_aliasing=False, mode='edge',
                 preserve_range=True, order=0
-                )
+            )
 
-        # finally save the image
-        warnings.filterwarnings("error")
+        # Finally save the image
         try:
+            warnings.filterwarnings("error")
             io.imsave(outfile, pyxelated.astype(uint8))
-        except UserWarning as e:
-            re = "/".join([o_path, o_base, f_name]) + '.' + f_ext
-            e = str(e).replace(re, "").strip()
-            print(t_erase + mag("\tWarning: ") + "It " + e)
-
+        except KeyboardInterrupt:
+            print(bar_rmv + "Cancelled with " + red("Ctrl+C"))
+            bar_redraw(1)
+            sys.exit(0)
+        except BaseException as e:
+            warn_cnt += 1
+            print_warn(e)
             warnings.filterwarnings("ignore")
             io.imsave(outfile, pyxelated.astype(uint8))
 
         img_end = t.time()
 
-    bar_redraw(cur_file, all_files, t.process_time(), time_img, 1)
+    cur_file += 1
+    bar_redraw(1)
