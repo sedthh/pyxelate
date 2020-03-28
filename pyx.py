@@ -152,6 +152,7 @@ style_def('dim', '\u001b[37;2m')
 # Status bar logic
 cur_file = 0
 warn_cnt = 0
+err_cnt = 0
 time_img = []
 avg_last_vals = 10
 t_up = '\x1b[1A'
@@ -166,7 +167,7 @@ def sec_to_time(sec):
 
 def bar_redraw(last=False):
     t_pass = round(t.process_time())
-    i_cur = cur_file - 1
+    i_cur = cur_file
     # Print bar
     percent = round(i_cur / all_files * 100, 1)
     p_int = round(i_cur / all_files * 100) // 2
@@ -177,6 +178,7 @@ def bar_redraw(last=False):
     r = "Done " + green(str(i_cur)) + '/' + str(all_files) + dim(" | ")
     if args.warnings:
         r += "Warnings: " + mag(str(warn_cnt)) + dim(" | ")
+    r += "Errors: " + red(str(err_cnt)) + dim(" | ")
     r += "Elapsed: " + sec_to_time(t_pass) + dim(" | ") + "Remaining: "
     # Remaining time. Averaging requires at least 1 value
     if len(time_img) > 0 and not last:
@@ -201,6 +203,12 @@ def print_warn(warn):
         print(bar_rmv + mag("\tWarning: ") + warn)
         bar_redraw()
 
+def print_err(err):
+    if str(err):
+        re = "/".join([o_path, o_base, f_name]) + '.' + f_ext
+        err = str(err).replace(re, "").strip().capitalize()
+        print(bar_rmv + red("\tError: ") + err)
+        bar_redraw()
 
 if __name__ == "__main__":
     # Get arguments and file list
@@ -216,11 +224,6 @@ if __name__ == "__main__":
         output_dir = Path(args.output)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get input and output paths
-    input_dir = Path(args.input) if args.input else Path.cwd()
-    o_path, o_base = str(output_dir).rsplit('/', 1)
-    i_path, i_base = str(input_dir).rsplit('/', 1)
-
     # At least one relevant file is required to run
     if image_files:
         print(green(len(image_files)) + " relevant files found | " +
@@ -229,9 +232,20 @@ if __name__ == "__main__":
         print(red(len(image_files)) + " relevant files found")
         sys.exit(1)
 
-    # Display some information at the start
-    print("Reading files from " + dim(i_path + '/') + i_base)
-    print("Writing files to   " + dim(o_path + '/') + o_base)
+    # Get input and output paths
+    # And display some information at the start
+    input_dir = Path(args.input) if args.input else Path.cwd()
+    if "/" in str(output_dir):
+        o_path, o_base = str(output_dir).rsplit('/', 1)
+        print("Writing files to   " + dim(o_path + '/') + o_base)        
+    else:
+        print("Reading files from " + str(output_dir))
+    
+    if "/" in str(input_dir):
+        i_path, i_base = str(input_dir).rsplit('/', 1)    
+        print("Reading files from " + dim(i_path + '/') + i_base)
+    else:
+        print("Reading files from " + dim(str(Path.cwd())) + "/" + str(input_dir))
 
     # Height and width are getting set per image, this are just placeholders
     p = Pyxelate(1, 1, color=args.colors, dither=args.dither,
@@ -244,7 +258,6 @@ if __name__ == "__main__":
         base = str(image_file.stem) + ".png"
         outfile = output_dir / base
         f_path, f_name, f_ext = parse_path(image_file)
-        cur_file += 1
 
         # Get the time of the last iteration to calculate the remaining
         if 'img_end' in globals():
@@ -285,6 +298,12 @@ if __name__ == "__main__":
             print(bar_rmv + "Cancelled with " + red("Ctrl+C"))
             bar_redraw(1)
             sys.exit(0)
+        except IndexError as e:
+            # When the file is not an image just move to the next file
+            err_cnt += 1
+            print_err(e)
+            bar_redraw()
+            continue
         except BaseException as e:
             warn_cnt += 1
             print_warn(e)
@@ -315,6 +334,6 @@ if __name__ == "__main__":
             io.imsave(outfile, pyxelated.astype(uint8))
 
         img_end = t.time()
+        cur_file += 1 # Only count up if the image was successfully processed
 
-    cur_file += 1
     bar_redraw(1)
