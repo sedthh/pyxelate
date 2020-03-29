@@ -12,8 +12,9 @@ from skimage.transform import resize
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn.exceptions import ConvergenceWarning
 
-__version__ = '1.1.3'
+__version__ = '1.1.4'
 __version_info__ = tuple(int(num) for num in __version__.split('.'))
+
 
 class Pyxelate:
 
@@ -146,18 +147,22 @@ class Pyxelate:
 			# get second best probability by removing the best one
 			probs[np.arange(len(y)), y] = 0
 			# get new best and values
-			v = np.max(probs, axis=1)
+			v = np.max(probs, axis=1) > self.dither
 			y = np.argmax(probs, axis=1)
 
 			# replace every second pixel with second best color
 			pad = not bool(width % 2)
-			# bottleneck
-			for i in range(0, len(image), 2):
-				if pad:
-					# make sure to alternate between starting positions
+
+			if pad:
+				# make sure to alternate between starting positions
+				# bottleneck
+				for i in range(0, len(image), 2):
 					i += (i // width) % 2
-				if v[i] > self.dither:
-					image[i] = palette[y[i]]
+					if v[i]:
+						image[i] = palette[y[i]]
+			else:
+				i = np.argwhere(v[::2]) * 2
+				image[i] = palette[y[i]]
 
 		image = np.reshape(image, (height, width, depth))
 		if mask is not None:
@@ -168,7 +173,16 @@ class Pyxelate:
 
 		return np.clip(image.astype("int"), 0, 255).astype("uint8")
 
-	def palette_from_list(self, images):
+	def convert_sequence(self, images):
+		"""Generates sequence of pixel arts from a list of images"""
+		if self.regenerate_palette:
+			warnings.warn("Warning, regenerate_palette=True will result in flickering, as the palette will be regenerated for each image!", Warning)
+		else:
+			self._palette_from_list(images)
+		for image in images:
+			yield self.convert(image)
+
+	def _palette_from_list(self, images):
 		"""Fit model to find palette using all images in list at once"""
 		if self.regenerate_palette:
 			warnings.warn("Warning, regenerate_palette=True will cause the generated palette to be lost while converting images!", Warning)
@@ -212,21 +226,22 @@ class Pyxelate:
 		def _wrapper(dim):
 			# apply median filter for noise reduction
 			dim = median(dim, square(4))
-			for _ in range(self.ITER):
+			for n in range(self.ITER):
 				h, w = dim.shape
 				h, w = h // 2, w // 2
-				new_image = np.zeros((h * w)).astype("int")
-				view = view_as_blocks(dim, (2, 2))
-				flatten = view.reshape(-1, 2, 2)
+				flatten = view_as_blocks(dim, (2, 2)).reshape(-1, 2, 2)
 				# bottleneck
-				for i, f in enumerate(flatten):
-					conv = np.abs(np.sum(np.multiply(self.CONVOLUTIONS, f.reshape(-1, 2, 2)).reshape(-1, 4), axis=1))
-					new_image[i] = np.mean(f[self.SOLUTIONS[np.argmax(conv)]])
-				new_image = new_image.reshape((h, w))
-				dim = new_image.copy()
+				new_image = np.fromiter((self._reduce_conv(f) for f in flatten), flatten.dtype).reshape((h, w))
+				if n < self.ITER - 1:
+					dim = new_image.copy()
 			return new_image
 
 		return _wrapper(image)
+
+	def _reduce_conv(self, f):
+		"""The actual function that selects the right pixels based on the gradients  2x2 square"""
+		return np.mean(f[self.SOLUTIONS[
+			np.argmax(np.sum(np.multiply(self.CONVOLUTIONS, f.reshape(-1, 2, 2)).reshape(-1, 4), axis=1))]])
 
 	def _dilate(self, image):
 		"""Dilate semi-transparent edges to remove artifacts
