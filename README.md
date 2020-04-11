@@ -43,13 +43,17 @@ The **Pyxelate()** class accepts the following init parameters:
 - **width**: the width of the result image.
 - **color**: the number of colors (default is 8). If the Bayesian Gaussian Mixture model did not converge try a different number of colors.  
 - **dither**: apply dithering (default is True). 
-- **alpha**: images with alpha channel will be converted in a way, that the pixels will either be transparent or visible above this threshold (default is .6).
+- **alpha** (only for images with alpha channel, and sequences): images with alpha channel will be converted in a way, that the pixels will either be transparent or visible above this threshold (default is .60).
 - **regenerate_palette**: if set to False, then the palette will only be generated once, and all future images will be generated using this original palette. This is useful for generating a sequence of images with the same palette (the default value is True, all images will have their own palettes).
+- **keyframe** (only for sequences): the percentage of absolute difference required between two images for the latter to be considered a new keyframe (default is .6   0).
+- **sensitivity** (only for sequences): the percentage of mean absolute difference required between two similar images to re-generate an area (default is .07). 
 - **random_state**: the random state for the Bayesian Gaussian Mixture model (default is 0).
 
-Once the class is created, call **convert(image)** by passing a NumPy array representation of the image.  
+Once the class is created, call **convert(image)** by passing a NumPy array representation of the image. The function will return another NumPy array.  
 
-**NOTE:** the process is pretty time consuming, generating large pixel arts can take quite a while!
+For sequences of images, call **convert_sequence([image1, image2, ...])*** by passing a list of NumPy array representations. The funciton will return a generator for NumPy arrays, after doing the necessary precalculations.   
+
+**NOTE:** the conversion process is pretty time consuming, generating large pixel arts can take quite a while! Converting large lists of images will also take a while to start the conversion.
 
 ![A-E-S-T-H-E-T-I-C](examples/asthetic.png)
 

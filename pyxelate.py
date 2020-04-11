@@ -12,7 +12,7 @@ from skimage.transform import resize
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn.exceptions import ConvergenceWarning
 
-__version__ = '1.1.4'
+__version__ = '1.2.0'
 __version_info__ = tuple(int(num) for num in __version__.split('.'))
 
 
@@ -66,9 +66,9 @@ class Pyxelate:
 
 	ITER = 2
 
-	def __init__(self, height, width, color=8, dither=True, alpha=.6, regenerate_palette=True, random_state=0):
+	def __init__(self, height, width, color=8, dither=True, alpha=.6, regenerate_palette=True,
+				 keyframe=.6, sensitivity=.07, random_state=0):
 		"""Create instance for generating similar pixel arts."""
-
 		self.height = int(height)
 		self.width = int(width)
 		if self.width < 1 or self.height < 1:
@@ -82,8 +82,10 @@ class Pyxelate:
 			self.dither = 1 / (self.color + 1)
 		else:
 			self.dither = 0.
-		self.alpha = float(alpha)
+		self.alpha = float(alpha)   # threshold for opacity
 		self.regenerate_palette = bool(regenerate_palette)
+		self.keyframe = keyframe  # threshold for differences between keyframes
+		self.sensitivity = sensitivity  # threshold for differences between parts of keyframes
 
 		# BGM
 		self.is_fitted = False
@@ -98,8 +100,12 @@ class Pyxelate:
 
 	def convert(self, image):
 		"""Generate pixel art from image"""
+		return self._convert(image, False, False)
+
+	def _convert(self, image, override_adapthist=False, override_dither=False):
+		"""Generate pixel art from image or sequence of images"""
 		# does the image have alpha channel?
-		if image.shape[2] == 4:
+		if self._is_transparent(image):
 			# remove artifacts from transparent edges
 			image = self._dilate(image)
 			# create alpha mask
@@ -111,19 +117,19 @@ class Pyxelate:
 			color_mask = None
 
 		# apply adaptive contrast
-		image = equalize_adapthist(image) * 255 * 1.14  # empirical magic number
-		image[image <= 8.] = 0.
+		if not override_adapthist:
+			image = self._fix_hist(image)
 
 		# create sample for finding palette
 		if self.regenerate_palette or not self.is_fitted:
-			examples = resize(image, (32, 32), anti_aliasing=False).reshape(-1, 3).astype("int")
+			examples = resize(image[:, :, :3], (32, 32), anti_aliasing=False).reshape(-1, 3).astype("int")
 			if color_mask is not None:
 				# transparent colors should be ignored
 				examples = examples[color_mask >= self.alpha]
 			self._fit_model(examples)
 
 		# resize image to 4 times the desired width and height
-		image = resize(image, (self.height * self.ITER * 2, self.width * self.ITER * 2), anti_aliasing=True)
+		image = resize(image[:, :, :3], (self.height * self.ITER * 2, self.width * self.ITER * 2), anti_aliasing=True)
 		# generate pixelated image with desired width / height
 		image = self._reduce(image)
 
@@ -143,7 +149,7 @@ class Pyxelate:
 		image = palette[y]
 
 		# apply dither over threshold if it's not zero
-		if self.dither:
+		if not override_dither and self.dither:
 			# get second best probability by removing the best one
 			probs[np.arange(len(y)), y] = 0
 			# get new best and values
@@ -152,7 +158,6 @@ class Pyxelate:
 
 			# replace every second pixel with second best color
 			pad = not bool(width % 2)
-
 			if pad:
 				# make sure to alternate between starting positions
 				# bottleneck
@@ -175,27 +180,77 @@ class Pyxelate:
 
 	def convert_sequence(self, images):
 		"""Generates sequence of pixel arts from a list of images"""
-		if self.regenerate_palette:
-			warnings.warn("Warning, regenerate_palette=True will result in flickering, as the palette will be regenerated for each image!", Warning)
-		else:
-			self._palette_from_list(images)
+		try:
+			_ = np.array(images, dtype=float)
+		except ValueError:
+			# image sizes are different == setting an array element with a sequence
+			raise ValueError("Shape of images in list are different.")
+
+		# apply adaptive histogram on each
+		images = [self._fix_hist(image) for image in images]
+
+		transparent = self._is_transparent(images[0])
+		keyframe_limit = self.keyframe * np.prod(images[0].shape) * 255.
+		sensitivity_limit = self.sensitivity * 255.
+		diff_images, key_frames = [], []
+
+		# create new images that are just the differences between sequences
 		for image in images:
-			yield self.convert(image)
+			# add first image
+			if diff_images:
+				diff = np.abs(image[:, :, :3] - diff_images[-1][:, :, :3])
+				# image is not too different, from previous one, create mask
+				if np.sum(diff) < keyframe_limit:
+					diff = resize(np.mean(diff, axis=2), (self.height, self.width), anti_aliasing=True)
+					over, under = diff > sensitivity_limit, diff <= sensitivity_limit
+					diff[over], diff[under] = 255, 0.
+					diff = resize(diff, (image.shape[0], image.shape[1]), anti_aliasing=False)
+					# was the image already transparent?
+					if transparent:
+						image[:, :, 3] = diff
+					else:
+						image = np.dstack((image, diff))
+					key_frames.append(False)
+				else:
+					key_frames.append(True)
+			else:
+				key_frames.append(True)
+			# add transparency layer for keyframes also, for easier broadcasting
+			if not self._is_transparent(image):
+				image = np.dstack((image, np.ones((image.shape[0], image.shape[1]))))
+			diff_images.append(image)
+
+		# create a palette from all images if possible
+		if self.regenerate_palette:
+			warnings.warn("using regenerate_palette=True will result in flickering, as the palette will be regenerated for each image!", Warning)
+		else:
+			self._palette_from_list(diff_images)
+
+		# merge keyframes and differences
+		last = None
+		for image, key in zip(diff_images, key_frames):
+			current = self._convert(image, True, ~key)  # pyxelate keyframe / change
+			if last is None:
+				last = current
+			else:
+				# merge differences to previous images
+				mask = ~np.logical_xor(last[:, :, 3], current[:, :, 3])
+				last[mask] = current[mask]
+			# generator
+			yield last.copy()
 
 	def _palette_from_list(self, images):
 		"""Fit model to find palette using all images in list at once"""
-		if self.regenerate_palette:
-			warnings.warn("Warning, regenerate_palette=True will cause the generated palette to be lost while converting images!", Warning)
+		transparency = self._is_transparent(images[0])
 		examples = []
 		color_masks = []
-		transparency = bool(images[0].shape[2] == 4)
+
 		# sample from all images
 		for image in images:
-			image = equalize_adapthist(image) * 255 * 1.14  # empirical magic number
-			image[image <= 8.] = 0.
-			examples.append(resize(image, (16, 16), anti_aliasing=False).reshape(-1, 3).astype("int"))
+			examples.append(resize(image[:, :, :3], (16, 16), anti_aliasing=False).reshape(-1, 3).astype("int"))
 			if transparency:
 				color_masks.append(resize(images[0][:, :, 3], (16, 16), anti_aliasing=False))
+
 		# concatenate to a single matrix
 		examples = np.concatenate(examples)
 		if transparency:
@@ -214,7 +269,7 @@ class Pyxelate:
 				warnings.filterwarnings('ignore', category=ConvergenceWarning)
 				converge = False
 		if not converge:
-			warnings.warn("The model has failed to converge, try a different number of colors for better results!", Warning)
+			warnings.warn("the model has failed to converge, try a different number of colors for better results!", Warning)
 		self.is_fitted = True
 
 	def _reduce(self, image):
@@ -256,3 +311,15 @@ class Pyxelate:
 		alter = _wrapper(image[:, :, :3])
 		image[:, :, :3][mask < self.alpha] = alter[mask < self.alpha]
 		return image
+
+	@staticmethod
+	def _fix_hist(image):
+		"""Apply adaptive histogram"""
+		image = equalize_adapthist(image) * 255 * 1.14  # empirical magic number
+		image[image <= 8.] = 0.
+		return image
+
+	@staticmethod
+	def _is_transparent(image):
+		"""Returns True if there is an additional dimension for transparency"""
+		return bool(image.shape[2] == 4)
