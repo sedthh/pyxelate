@@ -115,8 +115,6 @@ If no **--output** was defined, a **pyxelated/** folder will be created for outp
 
 There is also a [basic GUI](https://github.com/jarreed0/pyxelated-gui) that runs the CLI from a Tkinter window.
 
-The CLI does not support sequences at the moment..
-
 ![Synthwave vibes](examples/outrun.png)
 
 ### Requirements
