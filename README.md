@@ -107,8 +107,8 @@ Sequences are calculated by measuring the differences between frames, and only a
 ``` none
 usage: pyx.py [-h help] [-i folder of input images or path to single image]
               [-o folder of output images] [-f scale down input image by factor]
-              [-s scale up output image by factor] [-c colors] [-d dither]
-              [-a alpha] [-r regenerate_palette] [-t random_state] [-w warnings]
+              [-s scale up output image by factor] [-c colors] [-d dither] [-a alpha]
+              [-r regenerate_palette] [-t random_state] [-w warnings] [-S sequence]
 ```
 
 If no **--output** was defined, a **pyxelated/** folder will be created for output images. 
