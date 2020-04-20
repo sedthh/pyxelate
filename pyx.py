@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+""" Command-line interface for Pyxelate. It simplifies batch processing
+and provides user-friendly console output.
+
+Usage:
+pyx.py [-h help] [-i folder of input images or path to single image]
+       [-o folder of output images] [-f scale down input image by factor]
+       [-s scale up output image by factor] [-c colors] [-d dither] [-a alpha]
+       [-r regenerate_palette] [-t random_state] [-w warnings] [-S sequence]
+"""
+
 import argparse
 import sys
 import warnings
 import time as t
 from pathlib import Path
-from pyxelate import Pyxelate
 from numpy import uint8
 from skimage import io
 from skimage import transform
+from pyxelate import Pyxelate
 
 
 def parse_arguments():
+    """ Parses arguments and returns values. This function contains
+    descriptions for the -h flag
+    """
     parser = argparse.ArgumentParser(
         description='Pixelate images in a directory.'
     )
@@ -85,7 +98,8 @@ def parse_arguments():
 
 
 def str_as_bool(val):
-    # Interpret the string input as a boolean
+    """ Interpret the string input as a boolean
+    """
     if val.lower() in ("false", "none", "no", "0"):
         return False
     return True
@@ -95,15 +109,18 @@ def str_as_bool(val):
 F_EXCLUDED = 0
 
 def exclude_hidden(elm):
+    """ A filter that returns a file if it's not hidden
+    """
     global F_EXCLUDED
-    if not any(i.startswith('.') for i in elm.parts):
+    if not any(e.startswith('.') for e in elm.parts):
         return elm
     F_EXCLUDED += 1
     return False
 
 
- # Exclude directories and files without extension
 def with_extension(elm):
+    """ A filter that returns only a file with extension
+    """
     global F_EXCLUDED
     if elm.is_file() and '.' in elm.name:
         return elm
@@ -112,6 +129,8 @@ def with_extension(elm):
 
 
 def get_file_list(path):
+    """ Finds all the files recursively and filters them
+    """
     path = Path(path)
     if path.is_file() and '.' in path.name:
         return [path]
@@ -127,27 +146,29 @@ def get_file_list(path):
 
 
 def parse_path(file):
-    f_name, f_ext = str(file).rsplit('.', 1)
-    re = str(Path(args.input))
-    if re == '.':
-        f_name = '/' + f_name
+    """ Returns relative path, file name and extension
+    """
+    file, ext = str(file).rsplit('.', 1)
+    inp = str(Path(args.input))
+    if inp == '.':
+        file = '/' + file
     try:
-        f_path, f_name = f_name.rsplit('/', 1)
+        path, file = file.rsplit('/', 1)
     except ValueError:
-        f_path = ""
-    if re == str(file):
-        f_path = ""
-    f_path = f_path.replace(re, "")
-    f_path += '/' if f_path else ''
-    return [f_path, f_name, f_ext]
+        path = ""
+    if inp == str(file):
+        path = ""
+    path = path.replace(inp, "")
+    path += '/' if path else ''
+    return [path, file, ext]
 
 
 # Define CLI colors
 s = {
-    'green': lambda txt : '\u001b[32m' + str(txt) + '\u001b[0m',
-    'red': lambda txt : '\u001b[31m' + str(txt) + '\u001b[0m',
-    'mag': lambda txt : '\u001b[35m' + str(txt) + '\u001b[0m',
-    'dim': lambda txt : '\u001b[37;2m' + str(txt) + '\u001b[0m'
+    'green': lambda txt: '\u001b[32m' + str(txt) + '\u001b[0m',
+    'red': lambda txt: '\u001b[31m' + str(txt) + '\u001b[0m',
+    'mag': lambda txt: '\u001b[35m' + str(txt) + '\u001b[0m',
+    'dim': lambda txt: '\u001b[37;2m' + str(txt) + '\u001b[0m'
 }
 
 # Status bar logic
@@ -165,12 +186,14 @@ BAR_RMV = '\n' + T_ERASE + T_UP + T_ERASE
 def sec_to_time(sec):
     """ Returns the formatted time H:MM:SS
     """
-    m, s = divmod(sec, 60)
-    h, m = divmod(m, 60)
-    return f"{h:d}:{m:02d}:{s:02d}"
+    mins, sec = divmod(sec, 60)
+    hrs, mins = divmod(mins, 60)
+    return f"{hrs:d}:{mins:02d}:{sec:02d}"
 
 
 def bar_redraw(last=False):
+    """ Updates the progress bar and current status
+    """
     t_pass = round(t.process_time())
     i_cur = CUR_FILE
     # Print bar
@@ -204,44 +227,27 @@ def bar_redraw(last=False):
 
 
 def print_warn(warn):
+    """ Outputs text as a warning
+    """
     if str(warn) and args.warnings:
-        re = "/".join([O_PATH, O_BASE, f_name]) + '.' + f_ext
-        warn = str(warn).replace(re, "").strip().capitalize()
+        warn = str(warn).strip().capitalize()
         print(BAR_RMV + s['mag']("\tWarning: ") + warn)
         bar_redraw()
 
 
 def print_err(err):
+    """ Outputs text as an error
+    """
     if str(err):
-        re = "/".join([O_PATH, O_BASE, f_name]) + '.' + f_ext
-        err = str(err).replace(re, "").strip().capitalize()
+        err = str(err).strip().capitalize()
         print(BAR_RMV + s['red']("\tError: ") + err)
         bar_redraw()
 
 
-if __name__ == "__main__":
-    # Get arguments and file list
-    args = parse_arguments()
-    IMAGE_FILES = get_file_list(args.input)
-    ALL_FILES = len(IMAGE_FILES)
-
-    # Use the output directory defined by args
-    if not args.output:
-        OUTPUT_DIR = Path.cwd() / "pyxelated"
-        OUTPUT_DIR.mkdir(exist_ok=True)
-    else:
-        OUTPUT_DIR = Path(args.output)
-        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Set the recommended settings depending on the type of conversion,
-    # if the user did not specify them through arguments
-    if args.dither == None:
-        args.dither = (True, False)[args.sequence]
-    if args.regenerate_palette == None:
-        args.regenerate_palette = (True, False)[args.sequence]
-
-    # Show the full list of settings
-    print("[ Pyxelate settings ]\n" +
+def print_settings():
+    """ Outputs the full list of settings
+    """
+    print("Pyxelate settings\n" +
           s['dim']("\tFactor: ") + "\t" +
           str(args.factor) + "\t" +
           s['dim']("\tScaling: ") + "\t" +
@@ -259,17 +265,39 @@ if __name__ == "__main__":
           s['dim']("\tSequence: ") + "\t" +
           ("No", "Yes")[args.sequence] + "\n")
 
+
+if __name__ == "__main__":
+    # Get arguments and file list
+    args = parse_arguments()
+    IMAGE_FILES = get_file_list(args.input)
+    ALL_FILES = len(IMAGE_FILES)
+
+    # Use the output directory defined by args
+    if not args.output:
+        OUTPUT_DIR = Path.cwd() / "pyxelated"
+        OUTPUT_DIR.mkdir(exist_ok=True)
+    else:
+        OUTPUT_DIR = Path(args.output)
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Set the default settings depending on the type of conversion
+    if args.dither is None:
+        args.dither = (True, False)[args.sequence]
+    if args.regenerate_palette is None:
+        args.regenerate_palette = (True, False)[args.sequence]
+
+    print_settings()
+
     # Get input and output paths
     INPUT_DIR = Path(args.input) if args.input else Path.cwd()
 
     # Display input path
     if "/" in str(INPUT_DIR):
         I_PATH, I_BASE = str(INPUT_DIR).rsplit('/', 1)
-        print("[ Reading files from " +
-              s['dim'](I_PATH + '/') + I_BASE + " ]")
+        print("Reading files from " + s['dim'](I_PATH + '/') + I_BASE)
     else:
-        print("[ Reading files from " +
-              s['dim'](str(Path.cwd())) + "/" + str(INPUT_DIR) + " ]")
+        print("Reading files from " + s['dim'](str(Path.cwd())) +
+              "/" + str(INPUT_DIR))
 
     # At least one relevant file is required to run
     print(end="\t")
@@ -284,47 +312,41 @@ if __name__ == "__main__":
     # Display output path
     if "/" in str(OUTPUT_DIR):
         O_PATH, O_BASE = str(OUTPUT_DIR).rsplit('/', 1)
-        print("[ Writing files to " +
-              s['dim'](O_PATH + '/') + O_BASE + " ]")
+        print("Writing files to " + s['dim'](O_PATH + '/') + O_BASE)
     else:
-        print("[ Writing files to " + str(OUTPUT_DIR) + " ]")
+        print("Writing files to " + str(OUTPUT_DIR))
 
-    # Enable pre-processing for image sequences if -v True
-    def convert_seq(files):
-        """ A wrapper for a main class method that will return
-        the original list if no image sequence conversion is specified.
-        """
-        if args.sequence:
-            print("\tPreparing to convert image sequence...")
-            return p.convert_sequence(files)
-        return files
+    # Setup Pyxelate with placeholder dimensions 1x1
+    p = Pyxelate(
+        1, 1,
+        color=args.colors,
+        dither=args.dither,
+        alpha=args.alpha,
+        regenerate_palette=args.regenerate_palette,
+        random_state=args.random_state
+    )
 
-    # Prepare images to convert sequence or pass them as a list
+    # Prepare images to convert sequence
     if args.sequence:
-        SEQUENCE = []
-        for file in IMAGE_FILES:
-            SEQUENCE.append(io.imread(file))
-    else:
-        SEQUENCE = IMAGE_FILES
+        SEQUENCE = [io.imread(file) for file in IMAGE_FILES]
+        SEQ_IMAGE = p.convert_sequence(SEQUENCE)
+        HEIGHT, WIDTH, _ = io.imread(IMAGE_FILES[0]).shape
+        p.height = HEIGHT // args.factor
+        p.width = WIDTH // args.factor
 
-    # Setup Pyxelate and predefine dimensions
-    HEIGHT, WIDTH, _ = io.imread(IMAGE_FILES[0]).shape
-    p = Pyxelate(1, 1, color=args.colors, dither=args.dither,
-        alpha=args.alpha, regenerate_palette=args.regenerate_palette,
-        random_state=args.random_state)
-    p.height = HEIGHT // args.factor
-    p.width = WIDTH // args.factor
-
-    # Loop over all images in the directory
-    COLLECTION = zip(IMAGE_FILES, convert_seq(SEQUENCE))
-
-    for image_file, seq_image in COLLECTION:
-        # Get the time of the last iteration to calculate the remaining
-        T_SPLIT += [t.time()]
-        if T_SPLIT[1:]:
-            if len(TIME_IMG) == AVG_LAST_VALS:
-                del TIME_IMG[0]
-            TIME_IMG.append(round(T_SPLIT[1] - T_SPLIT.pop(0), 1))
+    for i, image_file in enumerate(IMAGE_FILES):
+        # Make a time stamp to calculate remaining
+        if i or not args.sequence:
+            # Calculate the time difference between iterations
+            T_SPLIT += [t.time()]
+            if T_SPLIT[1:]:
+                if len(TIME_IMG) == AVG_LAST_VALS:
+                    del TIME_IMG[0]
+                diff = round(T_SPLIT[1] - T_SPLIT.pop(0), 1)
+                TIME_IMG.append(diff)
+        else:
+            # Skip the first iteration to generate sequence palette
+            print("\tPreparing to convert image sequence...")
 
         # Get the path, file name, and extension
         base = str(image_file.stem) + ".png"
@@ -348,58 +370,63 @@ if __name__ == "__main__":
         # Redraw status bar
         bar_redraw()
 
-        # Convert a single image
-        if not args.sequence:
+        # Get current dimensions
+        if args.sequence:
+            # Get sequence dimensions
+            height, width = HEIGHT, WIDTH
+        else:
             # Get image dimensions
             height, width, _ = image.shape
 
-            # Apply the dimensions to Pyxelate
-            p.height = height // args.factor
-            p.width = width // args.factor
+        # Apply the dimensions to Pyxelate
+        p.height = height // args.factor
+        p.width = width // args.factor
+
+        # Convert the image
+        with warnings.catch_warnings(record=True) as w:
             try:
-                warnings.filterwarnings("error")
-                pyxelated = p.convert(image)
+                if args.sequence:
+                    # Convert image from sequence
+                    pyxelated = next(SEQ_IMAGE)
+                else:
+                    # Convert a single image
+                    pyxelated = p.convert(image)
             except KeyboardInterrupt:
-                print(BAR_RMV + "Cancelled with " + s['red']("Ctrl+C"))
+                print(BAR_RMV + "\tCancelled with " + s['red']("Ctrl+C"))
                 bar_redraw(last=True)
                 sys.exit(0)
             except IndexError as e:
-                # When the file is not an image just move to the next
+                # When the file is not an image just move to the next file
                 ERR_CNT += 1
                 print_err(e)
                 bar_redraw()
                 continue
-            except BaseException as e:
+            if w:
                 WARN_CNT += 1
-                print_warn(e)
-                warnings.filterwarnings("ignore")
-                pyxelated = p.convert(image)
-        else:
-            pyxelated = seq_image
-            height, width = HEIGHT, WIDTH
+                print_warn(w.pop().message)
 
         # Scale the image up if so requested
         if args.scaling > 1:
-            pyxelated = transform.resize(pyxelated, (
-                (height // args.factor) * args.scaling,
-                (width // args.factor) * args.scaling),
+            pyxelated = transform.resize(
+                pyxelated, (
+                    (height // args.factor) * args.scaling,
+                    (width // args.factor) * args.scaling
+                ),
                 anti_aliasing=False, mode='edge',
                 preserve_range=True, order=0
             )
 
         # Finally save the image
-        try:
-            warnings.filterwarnings("error")
-            io.imsave(outfile, pyxelated.astype(uint8))
-        except KeyboardInterrupt:
-            print(BAR_RMV + "Cancelled with " + s['red']("Ctrl+C"))
-            bar_redraw(last=True)
-            sys.exit(0)
-        except BaseException as e:
-            WARN_CNT += 1
-            print_warn(e)
-            warnings.filterwarnings("ignore")
-            io.imsave(outfile, pyxelated.astype(uint8))
+        with warnings.catch_warnings(record=True) as w:
+            try:
+                io.imsave(outfile, pyxelated.astype(uint8))
+            except KeyboardInterrupt:
+                print(BAR_RMV + "\tCancelled with " + s['red']("Ctrl+C"))
+                bar_redraw(last=True)
+                sys.exit(0)
+            if w:
+                WARN_CNT += 1
+                print_warn(w.pop().message)
 
         CUR_FILE += 1
 
