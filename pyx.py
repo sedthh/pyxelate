@@ -60,7 +60,7 @@ def parse_arguments():
     )
     parser.add_argument(
         '-r', '--regenerate_palette',
-        required=False, metavar='bool', type=bool, nargs='?',
+        required=False, metavar='bool', type=str_as_bool, nargs='?',
         default=None, help='''Regenerate the palette for each image.
         Defaults to True.'''
     )
