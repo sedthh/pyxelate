@@ -42,27 +42,25 @@ class Pyxelate:
 	], dtype="int")
 
 	SOLUTIONS = np.array([
-		[[1, 1], [1, 1]],
+		[[1/4, 1/4], [1/4, 1/4]],
 
-		[[0, 1], [1, 1]],
-		[[1, 0], [1, 1]],
-		[[1, 1], [0, 1]],
-		[[1, 1], [1, 0]],
+		[[0.0, 1/3], [1/3, 1/3]],
+		[[1/3, 0.0], [1/3, 1/3]],
+		[[1/3, 1/3], [0.0, 1/3]],
+		[[1/3, 1/3], [1/3, 0.0]],
 
-		[[1, 1], [0, 0]],
-		[[0, 0], [1, 1]],
+		[[0.5, 0.5], [0.0, 0.0]],
+		[[0.0, 0.0], [0.5, 0.5]],
+		[[0.5, 0.0], [0.5, 0.0]],
+		[[0.0, 0.5], [0.0, 0.5]],
+		[[0.5, 0.0], [0.5, 0.0]],
+		[[0.0, 0.5], [0.0, 0.5]],
 
-		[[1, 0], [1, 0]],
-		[[0, 1], [0, 1]],
-
-		[[1, 0], [1, 0]],
-		[[0, 1], [0, 1]],
-
-		[[1, 0], [0, 0]],
-		[[0, 1], [0, 0]],
-		[[0, 0], [1, 0]],
-		[[0, 0], [0, 1]],
-	], dtype="bool")
+		[[1.0, 0.0], [0.0, 0.0]],
+		[[0.0, 1.0], [0.0, 0.0]],
+		[[0.0, 0.0], [1.0, 0.0]],
+		[[0.0, 0.0], [0.0, 1.0]],  
+	], dtype="float")
 
 	ITER = 2
 
@@ -284,19 +282,35 @@ class Pyxelate:
 			for n in range(self.ITER):
 				h, w = dim.shape
 				h, w = h // 2, w // 2
-				flatten = view_as_blocks(dim, (2, 2)).reshape(-1, 2, 2)
-				# bottleneck
-				new_image = np.fromiter((self._reduce_conv(f) for f in flatten), flatten.dtype).reshape((h, w))
+				dim_blocks = view_as_blocks(dim, (2, 2))
+				all_convs = self._compute_convs(dim, h, w)
+				idx_solutions = np.argmax(all_convs, axis=0)
+				solutions_mask = self.SOLUTIONS[idx_solutions]
+				multiplied = np.multiply(solutions_mask, dim_blocks)
+				new_image = np.reshape(multiplied, (h,w,4)).sum(-1)
 				if n < self.ITER - 1:
 					dim = new_image.copy()
 			return new_image
 
 		return _wrapper(image)
 
-	def _reduce_conv(self, f):
-		"""The actual function that selects the right pixels based on the gradients  2x2 square"""
-		return np.mean(f[self.SOLUTIONS[
-			np.argmax(np.sum(np.multiply(self.CONVOLUTIONS, f.reshape(-1, 2, 2)).reshape(-1, 4), axis=1))]])
+	def _compute_convs(self, dim, h, w):
+		"""The actual function that applies every convolution to dim."""
+		# Compute convolutions for base vectors
+		base_convs = np.empty((2,2, h, w))
+		base_convs[0,0] = dim[::2,::2]
+		base_convs[0,1] = dim[::2,1::2]
+		base_convs[1,0] = dim[1::2,::2]
+		base_convs[1,1] = dim[1::2,1::2]
+		# Apply every convolution in self.CONVOLUTIONS
+		all_convs = np.empty((len(self.CONVOLUTIONS), h, w))
+		for i,kernel in enumerate(self.CONVOLUTIONS):
+			all_convs[i] = kernel[0,0]*base_convs[0,0] +\
+						kernel[0,1]*base_convs[0,1] +\
+						kernel[1,0]*base_convs[1,0] +\
+						kernel[1,1]*base_convs[1,1]
+		return all_convs 
+
 
 	def _dilate(self, image):
 		"""Dilate semi-transparent edges to remove artifacts
