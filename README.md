@@ -1,132 +1,138 @@
-# Pyxelate downsamples images into 8-bit pixel art
+<p align="center">
+  <img width="450" height="110" src="examples/logo.png">
+</p>
 
-![Definitely not cherry picking](examples/palm10.png)
+Super Pyxelate converts images to 8-bit pixel art. It is an improved, faster implementation of the [original Pyxelate](https://github.com/sedthh/pyxelate/releases/tag/1.2.1) algorithm with palette transfer support and enhanced dithering. 
 
-The method iteratively approximates a pixel art by sampling values based on the orientation of edges in the input image. 
-Then it applies unsupervised machine learning to generate the basis for an 8-bit color palette.  
+*Super Pyxelate is currently in beta.*
 
-### Installation
+![Pixel art corgi](/examples/p_corgi.png)
 
+# Usage
+
+```python
+from skimage import io
+from pyxelate import Pyx, Pal
+
+# load image with 'skimage.io.imread()'
+image = io.imread("examples/blazkowicz.jpg")  
+
+downsample_by = 14  # new image will be 1/14th of the original in size
+palette = 7  # find 7 colors
+
+# 1) Instantiate Pyx transformer
+pyx = Pyx(factor=downsample_by, palette=palette)
+
+# 2) fit an image, allow Pyxelate to learn the color palette
+pyx.fit(image)
+
+# 3) transform image to pixel art using the learned color palette
+new_image = pyx.transform(image)
+
+# save new image with 'skimage.io.imsave()'
+io.imsave("pixel.png", new_image)
+```
+![Definitely not cherry picking](/examples/p_blazkowicz.png)
+
+Pyxelate extends scikit-learn transformers, allowing the same learned palette to be reused on multiple pictures (for aesthetically **similar** images). 
+
+```python
+car = io.imread("examples/f1.jpg")
+robocop = io.imread("examples/robocop.jpg")
+
+# fit a model on each
+pyx_car = Pyx(factor=5, palette=8, dither="none").fit(car)
+pyx_robocop = Pyx(factor=6, palette=7, dither="naive").fit(robocop)
+
+"""
+pyx_car.transform(car)
+pyx_car.transform(robocop)
+pyx_robocop.transform(car)
+pyx_robocop.transform(robocop)
+"""
+```
+
+![Fit Transform Palette](/examples/p_fit_transform.png)
+
+For a single image, it is possible to call both fit() and transform() at the same time:
+
+```python
+# fit() and transform() on image with alpha channel
+trex = io.imread("examples/trex.png")
+trex_p = Pyx(factor=9, palette=4, dither="naive", alpha=.6).fit_transform(trex)
+```
+![Transparency for sprites](/examples/p_trex.png)
+
+## Hyperparameters for Pyx()
+| Parameter | Description |
+| --- | --- |
+| height | The height of the transformed image. If only height is set, the width of the transofmed image will be calculated to maintain the aspect ratio of the original. |
+| width | The width of the transformed image. If only width is set, the height of the transofmed image will be calculated to maintain the aspect ratio of the original. |
+| factor | The size of the transformed image will be `1. / factor` of the original. **Can be used instead of setting width or height.** |
+| upscale | Resizes the pixels of the transformed image by upscale. Can be a positive `int` or a tuple of ints for `(h, w)`. Default is `1`. |
+| palette | The number of colors in the transformed image. <br /> - If it's an `int` that is larger than 2, Pyxelate will search for this many colors automatically. Default is `8`. <br /> - If it's a `Pal` palette enum object, Pyxelate will use palette transfer to match these colors.|
+| dither | The type of dithering to use on the  transformed image (see more exampels below):<br />- `"none"` no dithering is applied (default, takes no additional time)<br />- `"naive"` Pyxelate's naive dithering based on probability mass function (use for images with **alpha channel**) <br />- `"bayer"` Bayer-like ordered dithering using a [4x4 Bayer Matrix](https://www.visgraf.impa.br/Courses/ip00/proj/Dithering1/) (fastest dithering method, use for large images)<br />- `"floyd"` Floyd-Steinberg inspired [error diffusion dithering](https://en.m.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering) (slowest)<br />- `"atkinson"` Atkinson inspired [error diffusion dithering](https://surma.dev/things/ditherpunk/) (slowest) |
+| alpha | For images with transparency, the transformed image's pixel will be either visible/invisible above/below this threshold. Default is `0.6`. |
+| depth | How many times should the Pyxelate algorithm downsample the image. More iteratrions will result in blockier images. Can be a positive `int`, although it is really time consuming and should never be more than 3. Raise it only for really small iamges. Default is `1`. |
+| boost | Adjust contrast and apply preprocessing on the image before transformation for better results. In case you see unwanted dark pixels in your image set this to `False`. Default is `True`. |
+
+Showcase of available dithering methods:
+![Dithering methods](/examples/p_palms.png)
+
+See more examples in [the example Jupyter Notebook](examples.ipynb).
+
+## Assigning existing palette
+Common retro palettes are available in `Pal`:
+
+```python
+from pyxelate import Pyx, Pal
+
+vangogh = io.imread("examples/vangogh.jpg")
+
+vangogh_apple = Pyx(factor=12, palette=Pal.APPLE_II_HI, dither="atkinson").fit_transform(vangogh)
+vangogh_mspaint = Pyx(factor=6, palette=Pal.MICROSOFT_WINDOWS_PAINT, dither="none").fit_transform(vangogh)
+```
+
+![Ever wondered how classical paintings would look like in MS Paint?](/examples/p_vangogh.png)
+Assign your own palette:
+```python
+my_pal = Pal.from_hex(["#FFFFFF", "#000000"])
+
+# same but defined with RGB values
+my_pal = Pal.from_rgb([[255, 255, 255], [0, 0, 0]])
+```
+
+Fitting existing palettes on different images will also have different results for `transform()`.
+
+# Installation
 ```
 pip3 install git+https://github.com/sedthh/pyxelate.git
 ```
 
-![Synthwave vibes](examples/f.png)
+Pyxelate relies on the following libraries to run (included in *requirements.txt*):
+- [sklearn 0.24.1](https://scikit-learn.org/stable/)
+- [skimage 0.18.1](https://scikit-image.org/)
 
-### Example usage:
-```python
-from pyxelate import Pyxelate
-from skimage import io
-import matplotlib.pyplot as plt
-
-img = io.imread("blade_runner.jpg")
-# generate pixel art that is 1/14 the size
-height, width, _ = img.shape 
-factor = 14
-colors = 6
-dither = True
-
-p = Pyxelate(height // factor, width // factor, colors, dither)
-img_small = p.convert(img)  # convert an image with these settings
-
-_, axes = plt.subplots(1, 2, figsize=(16, 16))
-axes[0].imshow(img)
-axes[1].imshow(img_small)
-plt.show()
-``` 
-![Like pixels in the rain](examples/br.png)
-
-### API
-
-The **Pyxelate()** class accepts the following init parameters:
-- **height**: the height of the result image (height was chosen to be first parameter to mirror the array representation).
-- **width**: the width of the result image.
-- **color**: the number of colors (default is 8). If the Bayesian Gaussian Mixture model did not converge try a different number of colors.  
-- **dither**: apply dithering (default is True). 
-- **alpha** (only for images with alpha channel, and sequences): images with alpha channel will be converted in a way, that the pixels will either be transparent or visible above this threshold (default is .60).
-- **regenerate_palette**: if set to False, then the palette will only be generated once, and all future images will be generated using this original palette. This is useful for generating a sequence of images with the same palette (the default value is True, all images will have their own palettes).
-- **keyframe** (only for sequences): the percentage of absolute difference required between two images for the latter to be considered a new keyframe (default is .60).
-- **sensitivity** (only for sequences): the percentage of mean absolute difference required between two similar images to re-generate an area (default is .07). 
-- **random_state**: the random state for the Bayesian Gaussian Mixture model (default is 0).
-
-Once the class is created, call **convert(image)** by passing a NumPy array representation of the image. The function will return another NumPy array.  
-
-**NOTE:** the conversion process is pretty time consuming, generating large pixel arts can take quite a while! Converting large lists of images will also take a while to start the conversion.
-
-![A-E-S-T-H-E-T-I-C](examples/asthetic.png)
-
-#### Converting sequence of images
-There is a separate function for converting image sequences. The function takes a list of NumPy array representation of images and returns a generator yielding for NumPy arrays. 
-
-Before the conversion process starts, the function takes all images, calculates the differences between frames
-then only converts the areas that are different, making the output look more static as if it was composed of different layers.
-The palette is generated from all keyframes and differences combined. 
-
-```python
-from pyxelate import Pyxelate
-from skimage import io
-
-images = []
-for file in ("frame_1.png", "frame_2.png", "frame_3.png"):
-    images.append(io.imread(file))
-
-# dither=False, regenerate_palette=False are recommended options for sequences
-p = Pyxelate(72, 128, 15, dither=False, regenerate_palette=False)
-
-i = 1
-for img in p.convert_sequence(images):
-    # this will load for a while before the first image
-    # is desampled and yielded
-    io.imsave(f"convert_{i}.png", img)
-    i += 1
-```
-
-![I'll be back](examples/t2.gif)
-
-It is recommended to only convert shorter sequences that are aesthetically similar. 
-
-### How does it work?
-
-The method applies a few computer vision functions for preprocessing. Then simple convolutions are applied on the images. The downsampled areas are calculated based on their gradients' magnitudes and orientation. 
-The function was inspired by the [Histogram of Oriented Gradients](https://scikit-image.org/docs/dev/auto_examples/features_detection/plot_hog.html) method.
-Once it's done, a [Bayesian Gaussian Mixture](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html) model is fitted (instead of conventional K-means) to find a reduced palette. 
-Using the centroids of the overlapping gaussians as "mean" colors is an empirically better choice,
-as cluster centroids for rare colors would have less effect on the rest of the palette due to 
-their smaller covariances (allowing flatter gaussians to eventually take over). 
-Since it also predicts probabilities, iteratively polling from the first and second best prediction over a threshold allows simple dithering.   
-The dirichlet distributions will put less weight on unnecessary clusters as well.  
-
-Sequences are calculated by measuring the differences between frames, and only applying the process on areas whose absolute difference is over a threshold.
-
-![Good boye resized](examples/corgi4.png)
-
-### CLI
-
-```pyx.py``` is the command line interface for the Pyxelate class and accepts a bunch of arguments to process multiple files one after another.
-
-``` none
-usage: pyx.py [-h help] [-i folder of input images or path to single image]
-              [-o folder of output images] [-f scale down input image by factor]
-              [-s scale up output image by factor] [-c colors] [-d dither] [-a alpha]
-              [-r regenerate_palette] [-t random_state] [-w warnings] [-S sequence]
-```
-
-If no **--output** was defined, a **pyxelated/** folder will be created for output images. 
-
-There is also a [basic GUI](https://github.com/jarreed0/pyxelated-gui) that runs the CLI from a Tkinter window.
-
-![Synthwave vibes](examples/outrun.png)
-
-### Requirements
-
-The Pyxelate class requires Python 3.7+ and relies on the following libraries to run:
-- [skimage 0.16.2](https://scikit-image.org/)
-- [sklearn 0.22.1](https://scikit-learn.org/stable/)
-
-### Contribution
-
-There are 2 known bottlenecks in the script caused by iterating over the image matrix. 
-If you can figure out a more efficient method (or are able to rewrite it as a GPU shader) it would be great! 
-
+# FAQ
 The source code is available under the **MIT license** 
-but I would appreciate the credit if your creation uses Pyxelate!
+but I would appreciate the credit if your work uses Pyxelate (for instance you may add me in the Special Thanks section in the credits of your videogame)!
+
+## How does it work?
+Pyxelate downsamples images by (iteratively) dividing it to 3x3 tiles and calculating the orientation of edges inside them. Each tile is downsampled to a single pixel value based on the angle the magnitude of these gradients, resulting in the approximation of a pixel art. This method was inspired by the [Histogram of Oriented Gradients](https://scikit-image.org/docs/dev/auto_examples/features_detection/plot_hog.html) computer vision technique.
+
+Then an unsupervised machine learning method, a [Bayesian Gaussian Mixture](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html) model is fitted (instead of conventional K-means) to find a reduced palette. The tied gaussians give a better estimate (than  Euclidean distance) and allow smaller centroids to appear and then lose importance to larger ones further away. The probability mass function returned by the uncalibrated model is then used as a basis for different dithering techniques.
+
+Preprocessing and color space conversion tricks are also applied for better results.
+
+## PROTIPs
+- There is **no one setting fits all**, try experimenting with different parameters for better results! A setting that generates visually pleasing result on one image might not work well for another.
+- The bigger the resulting image, the longer the process will take. Note that most parts of the algorithm are **O(H*W)** so an image that is twice the size will take 4 times longer to compute. 
+- Assigning existing palettes will take longer for larger palettes, because [LAB color distance](https://scikit-image.org/docs/dev/api/skimage.color.html#skimage.color.deltaE_ciede2000) has to be calculated between each color separately. 
+- Dithering takes time, especially *floyd* and *atkinson* as they are implemented in plain python with loops.
+
+## TODOs
+- Add CLI tool for Pyxelate so images can be batch converted from command line.
+- Re-implement Pyxelate for animations / sequence of frames in video.
+- Include PIPENV python environment files instead of just setup.py.
+- Implement Yliluoma's ordered dithering algorithm and experiment with improving visuals through gamma correction. 
+- Write a whitepaper on the Pyxelate algorithm.

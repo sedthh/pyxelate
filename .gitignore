@@ -1,3 +1,8 @@
+pyxelated/
+legacy/
+.idea/
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -94,6 +99,9 @@ ipython_config.py
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
 
+old_pyxelate/
+legacy/
+
 # Celery stuff
 celerybeat-schedule
 celerybeat.pid
@@ -103,7 +111,7 @@ celerybeat.pid
 
 # Environments
 .env
-.venv
+.venv/
 env/
 venv/
 ENV/
