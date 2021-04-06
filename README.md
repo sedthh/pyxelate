@@ -51,8 +51,7 @@ pyx_robocop.transform(car)
 pyx_robocop.transform(robocop)
 """
 ```
-
-![Fit Transform Palette](/examples/p_fit_transform.png)
+![Fit Transform Palette](/examples/p_fit_transform_.png)
 
 For a single image, it is possible to call both fit() and transform() at the same time:
 
@@ -112,9 +111,7 @@ pip3 install git+https://github.com/sedthh/pyxelate.git
 Pyxelate relies on the following libraries to run (included in *requirements.txt*):
 - [sklearn 0.24.1](https://scikit-learn.org/stable/)
 - [skimage 0.18.1](https://scikit-image.org/)
-
 ![The cathode that burns twice as bright, burns half the resolution](/examples/p_br.png)
-
 # FAQ
 The source code is available under the **MIT license** 
 but I would appreciate the credit if your work uses Pyxelate (for instance you may add me in the Special Thanks section in the credits of your videogame)!
@@ -131,9 +128,7 @@ Preprocessing and color space conversion tricks are also applied for better resu
 - The bigger the resulting image, the longer the process will take. Note that most parts of the algorithm are **O(H*W)** so an image that is twice the size will take 4 times longer to compute. 
 - Assigning existing palettes will take longer for larger palettes, because [LAB color distance](https://scikit-image.org/docs/dev/api/skimage.color.html#skimage.color.deltaE_ciede2000) has to be calculated between each color separately. 
 - Dithering takes time, especially *floyd* and *atkinson* as they are implemented in plain python with loops.
-
 ![You look like a good pixel](/examples/p_br2.png)
-
 ## TODOs
 - Add CLI tool for Pyxelate so images can be batch converted from command line.
 - Re-implement Pyxelate for animations / sequence of frames in video.
