@@ -1,7 +1,7 @@
 __version__ = "2.0.0"
 
 __short_description__ = (
-    "Downsample images to create 8-bit pixel art.",
+    "Downsample images to 8-bit pixel art.",
 )
 __license__ = "MIT"
 __author__ = "Richard Nagyfi"
