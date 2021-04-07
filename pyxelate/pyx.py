@@ -76,6 +76,15 @@ class BGM(BayesianGaussianMixture):
             warnings.warn("Pyxelate could not properly assign colors, try a different palette size for better results!", Warning)
         return self
     
+    def predict_proba(self, X):
+        p = super().predict_proba(X)
+        if self.find_palette:
+            if self.palette < 3:
+                return np.sqrt(p)
+        elif len(self.palette) < 3:
+            return np.sqrt(p)
+        return p
+
 
 class Pyx(BaseEstimator, TransformerMixin):
     """Pyx extends scikit-learn transformers"""

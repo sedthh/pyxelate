@@ -20,6 +20,11 @@ class BasePalette(Enum):
         else:
             raise StopIteration
     
+    @classmethod
+    def list(self):
+        """list all available Palette names"""
+        return list(map(lambda x: x.name, self))
+    
     def from_hex(hex_list):
         """Generate Pal palette from list of #HEX color values"""
         hex_list = [h.lstrip("#") for h in hex_list]

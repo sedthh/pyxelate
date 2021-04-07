@@ -51,7 +51,7 @@ pyx_robocop.transform(car)
 pyx_robocop.transform(robocop)
 """
 ```
-![Fit Transform Palette](/examples/p_fit_transform_.png)
+![Fit Transform Palette](/examples/p_fit_transform.png)
 
 For a single image, it is possible to call both fit() and transform() at the same time:
 
