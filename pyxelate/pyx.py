@@ -10,11 +10,12 @@ from skimage.transform import resize
 from skimage.color.adapt_rgb import adapt_rgb, each_channel
 from skimage.color import rgb2hsv, hsv2rgb
 from skimage.color import rgb2lab, deltaE_ciede2000
-from skimage.feature import hog as skimage_hog
+from skimage.filters import sobel as skimage_sobel
 from skimage.exposure import equalize_adapthist
 from skimage.morphology import square as skimage_square
 from skimage.morphology import dilation as skimage_dilation
 from skimage.filters import median as skimage_median
+from skimage.util import view_as_blocks
 
 from scipy.ndimage import convolve
 
@@ -104,16 +105,18 @@ class Pyx(BaseEstimator, TransformerMixin):
                                    [ 0.4375, -0.0625,  0.3125, -0.1875]])
     
     def __init__(self, height=None, width=None, factor=None, upscale=1, 
-                 depth=1, palette=8, dither="none", 
+                 depth=1, palette=8, dither="none", sobel=3,
                  alpha=.6, boost=True):
         if (width is not None or height is not None) and factor is not None:
             raise ValueError("You can only set either height + width or the downscaling factor, but not both!")
         assert height is None or height >= 1, "Width must be a positive integer!"
         assert width is None or width >= 1, "Width must be a positive integer!" 
         assert factor is None or factor >= 1, "Factor must be a positive integer!"
+        assert isinstance(sobel, int) and sobel >= 2, "Sobel must be an integer strictly greater than 1!"
         self.height = int(height) if height else None
         self.width = int(width) if width else None
         self.factor = int(factor) if factor else None
+        self.sobel = sobel
         if isinstance(upscale, (list, tuple, set, np.ndarray)):
             assert len(upscale) == 2, "Upscale must be len 2, with 2 positive integers!"
             assert upscale[0] >= 1 and upscale[1] >=1, "Upscale must have 2 positive values!"
@@ -220,74 +223,56 @@ class Pyx(BaseEstimator, TransformerMixin):
         return self
 
     def _pyxelate(self, X):
-        """downsample image based on the orientation of its gradients in 3x3 tiles"""
-        h, w, d = X.shape
-        X_  = self._pad(X)  # padding makes it less sensitive to small changes in size 
-        fd, hog_image = skimage_hog(X_[:, :, :3], orientations=9, pixels_per_cell=(3, 3),
-                            cells_per_block=(1, 1), visualize=True, multichannel=True, block_norm="L1")
-        hog = fd.reshape(h // 3, w // 3, 9)
-        X_ = np.zeros((hog.shape[0], hog.shape[1], d))
-        for y in range(hog.shape[0]):
-            for x in range(hog.shape[1]):
-                # Take a 3x3 part of the image from under the oriented gradient
-                part = X[y*3:(y+1)*3, x*3:(x+1)*3, :]
-                tile = np.zeros((d))
-                if np.max(hog[y, x]) <= 0:
-                    # no gradient
-                    tile += part[1, 1] * 2  # multiply by 2 because we take the others twice
-                else:
-                    # - gradient
-                    tile += part[1,0] * (hog[y, x][3] + hog[y, x][4] + hog[y, x][5])
-                    tile += part[1,2] * (hog[y, x][3] + hog[y, x][4] + hog[y, x][5])
-                    # | gradient
-                    tile += part[0,1] * (hog[y, x][0] + hog[y, x][8])
-                    tile += part[2,1] * (hog[y, x][0] + hog[y, x][8])
-                    # \ gradient
-                    tile += part[0, 0] * (hog[y, x][6] + hog[y, x][7])
-                    tile += part[2, 2] * (hog[y, x][6] + hog[y, x][7])
-                    # / gradient
-                    tile += part[0, 2] * (hog[y, x][1] + hog[y, x][2])
-                    tile += part[2, 0] * (hog[y, x][1] + hog[y, x][2])
+        """Downsample image based on the magnitude of its gradients in sobel-sided tiles"""
 
-                X_[y, x] += tile / 2.
-        return X_.copy()
+        @adapt_rgb(each_channel)
+        def _wrapper(dim):
+            h, w = dim.shape
+            sobel = skimage_sobel(dim)
+            sobel += 1e-8 # avoid division by zero
+            sobel_norm = view_as_blocks(sobel, (self.sobel, self.sobel)).sum((2,3))
+            sum_prod = view_as_blocks((sobel * dim), (self.sobel, self.sobel)).sum((2,3))
+            return sum_prod / sobel_norm
+
+        X_pad = self._pad(X, self.sobel)
+        return _wrapper(X_pad).copy()
     
-    def _pad(self, X, nh=None, nw=None):
-        """Pad image if it's not 3 divisable or remove such padding"""
+    def _pad(self, X, pad_size, nh=None, nw=None):
+        """Pad image if it's not pad_size divisable or remove such padding"""
         if nh is None and nw is None:
-            # pad edges so image is divisible by 3
+            # pad edges so image is divisible by pad_size
             h, w, d = X.shape
-            h1, h2 = (1 if h % 3 > 0 else 0), (1 if h % 3 == 1 else 0)
-            w1, w2 = (1 if w % 3 > 0 else 0), (1 if w % 3 == 1 else 0)
+            h1, h2 = (1 if h % pad_size > 0 else 0), (1 if h % pad_size == 1 else 0)
+            w1, w2 = (1 if w % pad_size > 0 else 0), (1 if w % pad_size == 1 else 0)
             return np.pad(X, ((h1, h2), (w1, w2), (0, 0)), "edge")
         else:
             # remove previous padding
-            return X[slice((1 if nh % 3 > 0 else 0),(-1 if nh % 3 == 1 else None)), 
-                     slice((1 if nw % 3 > 0 else 0),(-1 if nw % 3 == 1 else None)), :]
+            return X[slice((1 if nh % pad_size > 0 else 0),(-1 if nh % pad_size == 1 else None)), 
+                     slice((1 if nw % pad_size > 0 else 0),(-1 if nw % pad_size == 1 else None)), :]
     
     def _dilate(self, X):
         """Dilate semi-transparent edges to remove artifacts"""
         h, w, d = X.shape
-        X_ = self._pad(X)
+        X_ = self._pad(X, 3)
         @adapt_rgb(each_channel)
         def _wrapper(dim):
             return skimage_dilation(dim, selem=skimage_square(3))
         mask = X_[:, :, 3]
         alter = _wrapper(X_[:, :, :3])
         X_[:, :, :3][mask < self.alpha] = alter[mask < self.alpha]
-        return self._pad(X_, h, w)
+        return self._pad(X_, 3, h, w)
     
     def _median(self, X):
-        """Median filiter on HSV channels using 3x3 square"""
+        """Median filter on HSV channels using 3x3 squares"""
         h, w, d = X.shape
-        X_ = self._pad(X)
+        X_ = self._pad(X, 3)
         X_ = rgb2hsv(X_)
         @adapt_rgb(each_channel)
         def _wrapper(dim):
             return skimage_median(dim, skimage_square(3))
         X_ = _wrapper(X_)
         X_ = hsv2rgb(X_)
-        return self._pad(X_, h, w)
+        return self._pad(X_, 3, h, w)
 
     def _warn_on_dither_with_alpha(self, d):
         if d > 3 and self.dither in ("bayer", "floyd", "atkinson"):
@@ -313,7 +298,7 @@ class Pyx(BaseEstimator, TransformerMixin):
             alpha_mask = None
         if self.depth:
             # change size depending on the number of iterations
-            new_h, new_w = new_h * (3 ** self.depth), new_w * (3 ** self.depth)
+            new_h, new_w = new_h * (self.sobel ** self.depth), new_w * (self.sobel ** self.depth)
         X_ = resize(X_[:, :, :3], (new_h, new_w), anti_aliasing=True)  # colors are now 0. - 1.        
         
         if self.boost:
