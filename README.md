@@ -106,7 +106,7 @@ Fitting existing palettes on different images will also have different results f
 
 # Installation
 ```
-pip3 install git+https://github.com/sedthh/pyxelate.git
+pip install git+https://github.com/sedthh/pyxelate.git --upgrade
 ```
 
 Pyxelate relies on the following libraries to run (included in *requirements.txt*):

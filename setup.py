@@ -9,7 +9,7 @@ setup(name='pyxelate',
       url='http://github.com/sedthh/pyxelate',
       author='sedthh',
       license='MIT',
-      packages=[''],
+      packages=['pyxelate'],
       zip_safe=False,
       install_requires=[
           'scikit-learn>=0.24.1', 'scikit-image>=0.18.1'
