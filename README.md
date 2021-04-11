@@ -34,7 +34,7 @@ io.imsave("pixel.png", new_image)
 ```
 ![Definitely not cherry picking](/examples/p_blazkowicz.png)
 
-Pyxelate extends scikit-learn transformers, allowing the same learned palette to be reused on multiple pictures (for aesthetically **similar** images). 
+Pyxelate extends scikit-learn transformers, allowing the same learned palette to be reused on other, aesthetically **similar** images (so it's somewhat like an 8-bit style transfer): 
 
 ```python
 car = io.imread("examples/f1.jpg")
@@ -72,7 +72,8 @@ trex_p = Pyx(factor=9, palette=4, dither="naive", alpha=.6).fit_transform(trex)
 | palette | The number of colors in the transformed image. <br /> - If it's an `int` that is larger than 2, Pyxelate will search for this many colors automatically. Default is `8`. <br /> - If it's a `Pal` palette enum object, Pyxelate will use palette transfer to match these colors.|
 | dither | The type of dithering to use on the  transformed image (see more exampels below):<br />- `"none"` no dithering is applied (default, takes no additional time)<br />- `"naive"` Pyxelate's naive dithering based on probability mass function (use for images with **alpha channel**) <br />- `"bayer"` Bayer-like ordered dithering using a [4x4 Bayer Matrix](https://www.visgraf.impa.br/Courses/ip00/proj/Dithering1/) (fastest dithering method, use for large images)<br />- `"floyd"` Floyd-Steinberg inspired [error diffusion dithering](https://en.m.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering) (slowest)<br />- `"atkinson"` Atkinson inspired [error diffusion dithering](https://surma.dev/things/ditherpunk/) (slowest) |
 | alpha | For images with transparency, the transformed image's pixel will be either visible/invisible above/below this threshold. Default is `0.6`. |
-| depth | How many times should the Pyxelate algorithm downsample the image. More iteratrions will result in blockier images. Can be a positive `int`, although it is really time consuming and should never be more than 3. Raise it only for really small iamges. Default is `1`. |
+| depth | How many times should the Pyxelate algorithm downsample the image. More iteratrions will result in blockier images. Must be a positive `int`, although it is really time consuming and should never be more than 3. Raise it only for really small iamges. Default is `1`. |
+| sobel | The size of the sobel operator, must be an `int` larger than 1. Default is `3`, try `2` for a much faster but less accurate output. |
 | boost | Adjust contrast and apply preprocessing on the image before transformation for better results. In case you see unwanted dark pixels in your image set this to `False`. Default is `True`. |
 
 Showcase of available dithering methods:
