@@ -12,6 +12,6 @@ setup(name='pyxelate',
       packages=['pyxelate'],
       zip_safe=False,
       install_requires=[
-          'scikit-learn>=0.24.1', 'scikit-image>=0.18.1'
+          'scikit-learn>=0.24.1', 'scikit-image>=0.18.1','numba>=0.53.1'
       ],
       )
