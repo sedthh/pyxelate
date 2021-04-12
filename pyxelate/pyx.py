@@ -19,6 +19,8 @@ from skimage.util import view_as_blocks
 
 from scipy.ndimage import convolve
 
+from numba import njit
+
 from .pal import BasePalette
 
 class BGM(BayesianGaussianMixture):
@@ -278,6 +280,40 @@ class Pyx(BaseEstimator, TransformerMixin):
         if d > 3 and self.dither in ("bayer", "floyd", "atkinson"):
             warnings.warn("Images with transparency can have unwanted artifacts around the edges with this dithering method. Use 'naive' instead.", Warning)
 
+    def _dither_floyd(self, reshaped, final_shape):
+        """Floyd-Steinberg-like dithering"""
+
+        @njit()
+        def _wrapper(probs, final_h, final_w):
+            #probs = 1. / np.where(probs == 1, 1., -np.log(probs))
+            probs = np.power(probs, (1. / 6.))
+            res = np.zeros((final_h, final_w), dtype=np.int8)
+            for y in range(final_h - 1):
+                for x in range(1, final_w - 1):
+                    quant_error = probs[:, y, x] / 16.
+                    res[y, x] = np.argmax(quant_error)
+                    quant_error[res[y, x]] = 0.
+                    probs[:, y, x+1] += quant_error * 7.
+                    probs[:, y+1, x-1] += quant_error * 3.
+                    probs[:, y+1, x] += quant_error * 5.
+                    probs[:, y+1, x+1] += quant_error
+            # fix edges
+            x = final_w - 1
+            for y in range(final_h):
+                res[y, x] = np.argmax(probs[:, y, x])
+                res[y, 0] = np.argmax(probs[:, y, 0])
+            y = final_h - 1
+            for x in range(1, final_w - 1):
+                res[y, x] = np.argmax(probs[:, y, x])
+            return res
+        
+        final_h, final_w = final_shape
+        probs = self.model.predict_proba(reshaped)
+        probs = np.array([probs[:, i].reshape((final_h, final_w)) for i in range(len(self.colors))])
+        res = _wrapper(probs, final_h, final_w)
+        return self.colors[res.reshape(final_h * final_w)]
+
+
     def transform(self, X, y=None):
         """Transform image to pyxelated version"""
         assert self.is_fitted, "Call 'fit(image_as_numpy)' first before calling 'transform(image_as_numpy)'!"
@@ -350,31 +386,9 @@ class Pyx(BaseEstimator, TransformerMixin):
             probs = np.argmin(probs, axis=0)
             X_ = self.colors[probs]
         elif self.dither == "floyd":
-            # Floyd-Steinberg-like dithering
+            # Floyd-Steinberg-like algorithm
             self._warn_on_dither_with_alpha(d)
-            probs = self.model.predict_proba(reshaped)
-            probs = np.array([probs[:, i].reshape((final_h, final_w)) for i in range(len(self.colors))])
-            #probs = 1. / np.where(probs == 1, 1., -np.log(probs))
-            probs = np.power(probs, (1. / 6.))
-            res = np.zeros((final_h, final_w), dtype=int)
-            for y in range(final_h - 1):
-                for x in range(1, final_w - 1):
-                    quant_error = probs[:, y, x] / 16.
-                    res[y, x] = np.argmax(quant_error)
-                    quant_error[res[y, x]] = 0.
-                    probs[:, y, x+1] += quant_error * 7.
-                    probs[:, y+1, x-1] += quant_error * 3.
-                    probs[:, y+1, x] += quant_error * 5.
-                    probs[:, y+1, x+1] += quant_error
-            # fix edges
-            x = final_w - 1
-            for y in range(final_h):
-                res[y, x] = np.argmax(probs[:, y, x])
-                res[y, 0] = np.argmax(probs[:, y, 0])
-            y = final_h - 1
-            for x in range(1, final_w - 1):
-                res[y, x] = np.argmax(probs[:, y, x])
-            X_ = self.colors[res.reshape(final_h * final_w)]   
+            X_ = self._dither_floyd(reshaped, (final_h, final_w))
         elif self.dither == "atkinson":
             # Atkinson-like algorithm
             self._warn_on_dither_with_alpha(d)
