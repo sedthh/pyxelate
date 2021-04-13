@@ -72,8 +72,8 @@ trex_p = Pyx(factor=9, palette=4, dither="naive", alpha=.6).fit_transform(trex)
 | palette | The number of colors in the transformed image. <br /> - If it's an `int` that is larger than 2, Pyxelate will search for this many colors automatically. Default is `8`. <br /> - If it's a `Pal` palette enum object, Pyxelate will use palette transfer to match these colors.|
 | dither | The type of dithering to use on the  transformed image (see more exampels below):<br />- `"none"` no dithering is applied (default, takes no additional time)<br />- `"naive"` Pyxelate's naive dithering based on probability mass function (use for images with **alpha channel**) <br />- `"bayer"` Bayer-like ordered dithering using a [4x4 Bayer Matrix](https://www.visgraf.impa.br/Courses/ip00/proj/Dithering1/) (fastest dithering method, use for large images)<br />- `"floyd"` Floyd-Steinberg inspired [error diffusion dithering](https://en.m.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering) (slowest)<br />- `"atkinson"` Atkinson inspired [error diffusion dithering](https://surma.dev/things/ditherpunk/) (slowest) |
 | alpha | For images with transparency, the transformed image's pixel will be either visible/invisible above/below this threshold. Default is `0.6`. |
-| depth | How many times should the Pyxelate algorithm downsample the image. More iteratrions will result in blockier images. Must be a positive `int`, although it is really time consuming and should never be more than 3. Raise it only for really small iamges. Default is `1`. |
-| sobel | The size of the sobel operator, must be an `int` larger than 1. Default is `3`, try `2` for a much faster but less accurate output. |
+| sobel | The size of the sobel operator (N*N area to calculate the gradients for downsampling), must be an `int` larger than 1. Default is `3`, try `2` for a much faster but less accurate output. |
+| depth | How many times should the Pyxelate algorithm be applied to downsample the image. More iteratrions will result in blockier aesthatics. Must be a positive `int`, although it is really time consuming and should never be more than 3. Raise it only for really small images. Default is `1`. |
 | boost | Adjust contrast and apply preprocessing on the image before transformation for better results. In case you see unwanted dark pixels in your image set this to `False`. Default is `True`. |
 
 Showcase of available dithering methods:
@@ -129,7 +129,7 @@ Preprocessing and color space conversion tricks are also applied for better resu
 - There is **no one setting fits all**, try experimenting with different parameters for better results! A setting that generates visually pleasing result on one image might not work well for another.
 - The bigger the resulting image, the longer the process will take. Note that most parts of the algorithm are **O(H*W)** so an image that is twice the size will take 4 times longer to compute. 
 - Assigning existing palettes will take longer for larger palettes, because [LAB color distance](https://scikit-image.org/docs/dev/api/skimage.color.html#skimage.color.deltaE_ciede2000) has to be calculated between each color separately. 
-- Dithering takes time, especially *floyd* and *atkinson* as they are implemented in plain python with loops.
+- Dithering takes time (especially *atkinson*) as they are mostly implemented in plain python with loops.
 ![You look like a good pixel](/examples/p_br2.png)
 ## TODOs
 - Add CLI tool for Pyxelate so images can be batch converted from command line.
