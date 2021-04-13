@@ -112,6 +112,7 @@ pip install git+https://github.com/sedthh/pyxelate.git --upgrade
 Pyxelate relies on the following libraries to run (included in *requirements.txt*):
 - [sklearn 0.24.1](https://scikit-learn.org/stable/)
 - [skimage 0.18.1](https://scikit-image.org/)
+- [numba 0.53.1](https://numba.pydata.org/)
 ![The cathode that burns twice as bright, burns half the resolution](/examples/p_br.png)
 # FAQ
 The source code is available under the **MIT license** 
