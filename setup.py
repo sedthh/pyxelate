@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
     name="pyxelate",
-    version="2.0.3",
+    version="2.0.4",
     description="Pyxelate is a Python class that converts images into 8-bit pixel art.",
     url="http://github.com/sedthh/pyxelate",
     author="sedthh",
