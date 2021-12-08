@@ -15,7 +15,7 @@ Once installed, Pyxelate can be used either from the command line or from Python
 ```bash
 $ pyxelate examples/blazkowicz.jpg output.png --factor 14 --palette 7
 Pyxelating examples/blazkowicz.jpg...
-open output.pntWrote output.png
+Wrote output.png
 ```
 
 Use `pyxelate --help` for a full list of command-line options, which map onto the
