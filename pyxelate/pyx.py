@@ -111,7 +111,7 @@ class Pyx(BaseEstimator, TransformerMixin):
                  alpha=.6, boost=True):
         if (width is not None or height is not None) and factor is not None:
             raise ValueError("You can only set either height + width or the downscaling factor, but not both!")
-        assert height is None or height >= 1, "Width must be a positive integer!"
+        assert height is None or height >= 1, "Height must be a positive integer!"
         assert width is None or width >= 1, "Width must be a positive integer!" 
         assert factor is None or factor >= 1, "Factor must be a positive integer!"
         assert isinstance(sobel, int) and sobel >= 2, "Sobel must be an integer strictly greater than 1!"
