@@ -10,6 +10,19 @@ Super Pyxelate converts images to 8-bit pixel art. It is an improved, faster imp
 
 # Usage
 
+Once installed, Pyxelate can be used either from the command line or from Python.
+
+```bash
+$ pyxelate examples/blazkowicz.jpg output.png --factor 14 --palette 7
+Pyxelating examples/blazkowicz.jpg...
+Wrote output.png
+```
+
+Use `pyxelate --help` for a full list of command-line options, which map onto the
+Python arguments described below.
+
+Invoking from Python:
+
 ```python
 from skimage import io
 from pyxelate import Pyx, Pal
@@ -132,7 +145,6 @@ Preprocessing and color space conversion tricks are also applied for better resu
 - Dithering takes time (especially *atkinson*) as they are mostly implemented in plain python with loops.
 ![You look like a good pixel](/examples/p_br2.png)
 ## TODOs
-- Add CLI tool for Pyxelate so images can be batch converted from command line.
 - Re-implement Pyxelate for animations / sequence of frames in video.
 - Include PIPENV python environment files instead of just setup.py.
 - Implement Yliluoma's ordered dithering algorithm and experiment with improving visuals through gamma correction. 
