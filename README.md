@@ -144,11 +144,14 @@ Preprocessing and color space conversion tricks are also applied for better resu
 - The bigger the resulting image, the longer the process will take. Note that most parts of the algorithm are **O(H*W)** so an image that is twice the size will take 4 times longer to compute. 
 - Assigning existing palettes will take longer for larger palettes, because [LAB color distance](https://scikit-image.org/docs/dev/api/skimage.color.html#skimage.color.deltaE_ciede2000) has to be calculated between each color separately. 
 - Dithering takes time (especially *atkinson*) as they are mostly implemented in plain python with loops.
-![You look like a good pixel](/examples/p_br2.png)
+
+<p align="center">
+  <a href="https://twitter.com/OzegoDub" taget="_blank"><img alt="via https://twitter.com/OzegoDub" src="./examples/ozego.png" /></a>
+</p>
+
 ## TODOs
 - Re-implement Pyxelate for animations / sequence of frames in video.
 - Include PIPENV python environment files instead of just setup.py.
 - Implement Yliluoma's ordered dithering algorithm and experiment with improving visuals through gamma correction. 
 - Write a whitepaper on the Pyxelate algorithm.
 
-[![via https://twitter.com/OzegoDub](/examples/ozego.png)](https://twitter.com/OzegoDub)
