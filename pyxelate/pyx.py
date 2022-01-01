@@ -22,7 +22,11 @@ from scipy.ndimage import convolve
 
 from numba import njit
 
-from .pal import BasePalette
+try:
+    from .pal import BasePalette
+except ImportError:
+    from pal import BasePalette
+    
 
 class BGM(BayesianGaussianMixture):
     """Wrapper for BayesianGaussianMixture"""
