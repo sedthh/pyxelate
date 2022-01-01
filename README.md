@@ -84,6 +84,7 @@ trex_p = Pyx(factor=9, palette=4, dither="naive", alpha=.6).fit_transform(trex)
 | upscale | Resizes the pixels of the transformed image by upscale. Can be a positive `int` or a tuple of ints for `(h, w)`. Default is `1`. |
 | palette | The number of colors in the transformed image. <br /> - If it's an `int` that is larger than 2, Pyxelate will search for this many colors automatically. Default is `8`. <br /> - If it's a `Pal` palette enum object, Pyxelate will use palette transfer to match these colors.|
 | dither | The type of dithering to use on the  transformed image (see more exampels below):<br />- `"none"` no dithering is applied (default, takes no additional time)<br />- `"naive"` Pyxelate's naive dithering based on probability mass function (use for images with **alpha channel**) <br />- `"bayer"` Bayer-like ordered dithering using a [4x4 Bayer Matrix](https://www.visgraf.impa.br/Courses/ip00/proj/Dithering1/) (fastest dithering method, use for large images)<br />- `"floyd"` Floyd-Steinberg inspired [error diffusion dithering](https://en.m.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering) (slowest)<br />- `"atkinson"` Atkinson inspired [error diffusion dithering](https://surma.dev/things/ditherpunk/) (slowest) |
+| svd | Apply a truncated SVD (`n_components=32`) on each RGB channel as a form of low-pass filter. Default is `True`. |
 | alpha | For images with transparency, the transformed image's pixel will be either visible/invisible above/below this threshold. Default is `0.6`. |
 | sobel | The size of the sobel operator (N*N area to calculate the gradients for downsampling), must be an `int` larger than 1. Default is `3`, try `2` for a much faster but less accurate output. |
 | depth | How many times should the Pyxelate algorithm be applied to downsample the image. More iteratrions will result in blockier aesthatics. Must be a positive `int`, although it is really time consuming and should never be more than 3. Raise it only for really small images. Default is `1`. |
@@ -95,7 +96,7 @@ Showcase of available dithering methods:
 See more examples in [the example Jupyter Notebook](examples.ipynb).
 
 ## Assigning existing palette
-Common retro palettes are available in `Pal`:
+Common retro palettes for different hardware (and others like the [PICO-8](https://www.lexaloffle.com/pico-8.php) fantasy console) are available in `Pal`:
 
 ```python
 from pyxelate import Pyx, Pal
@@ -103,7 +104,7 @@ from pyxelate import Pyx, Pal
 vangogh = io.imread("examples/vangogh.jpg")
 
 vangogh_apple = Pyx(factor=12, palette=Pal.APPLE_II_HI, dither="atkinson").fit_transform(vangogh)
-vangogh_mspaint = Pyx(factor=6, palette=Pal.MICROSOFT_WINDOWS_PAINT, dither="none").fit_transform(vangogh)
+vangogh_mspaint = Pyx(factor=8, palette=Pal.MICROSOFT_WINDOWS_PAINT, dither="none").fit_transform(vangogh)
 ```
 
 ![Ever wondered how classical paintings would look like in MS Paint?](/examples/p_vangogh.png)
@@ -149,3 +150,5 @@ Preprocessing and color space conversion tricks are also applied for better resu
 - Include PIPENV python environment files instead of just setup.py.
 - Implement Yliluoma's ordered dithering algorithm and experiment with improving visuals through gamma correction. 
 - Write a whitepaper on the Pyxelate algorithm.
+
+[![via https://twitter.com/OzegoDub](/examples/ozego.png)](https://twitter.com/OzegoDub)

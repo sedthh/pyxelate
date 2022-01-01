@@ -5,6 +5,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn.cluster import KMeans
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils.extmath import randomized_svd
 
 from skimage.transform import resize
 from skimage.color.adapt_rgb import adapt_rgb, each_channel
@@ -100,6 +101,9 @@ class Pyx(BaseEstimator, TransformerMixin):
     DITHER_AUTO_SIZE_LIMIT_LO = 16
     DITHER_AUTO_COLOR_LIMIT = 8
     DITHER_NAIVE_BOOST = 1.33
+    SVD_N_COMPONENTS = 32
+    SVD_MAX_ITER = 16
+    SVD_RANDOM_STATE = 1234
     # precalculated 4x4 Bayer Matrix / 16 - 0.5
     DITHER_BAYER_MATRIX = np.array([[-0.5   ,  0.    , -0.375 ,  0.125 ],
                                    [ 0.25  , -0.25  ,  0.375 , -0.125 ],
@@ -107,7 +111,7 @@ class Pyx(BaseEstimator, TransformerMixin):
                                    [ 0.4375, -0.0625,  0.3125, -0.1875]])
     
     def __init__(self, height=None, width=None, factor=None, upscale=1, 
-                 depth=1, palette=8, dither="none", sobel=3,
+                 depth=1, palette=8, dither="none", sobel=3, svd=True,
                  alpha=.6, boost=True):
         if (width is not None or height is not None) and factor is not None:
             raise ValueError("You can only set either height + width or the downscaling factor, but not both!")
@@ -138,6 +142,7 @@ class Pyx(BaseEstimator, TransformerMixin):
             raise ValueError("The minimum number of colors in a palette is 2")
         assert dither in (None, "none", "naive", "bayer", "floyd", "atkinson"), "Unknown dithering algorithm!"
         self.dither = dither
+        self.svd = bool(svd)
         self.alpha = float(alpha)
         self.boost = bool(boost)
         
@@ -313,6 +318,22 @@ class Pyx(BaseEstimator, TransformerMixin):
         res = _wrapper(probs, final_h, final_w)
         return self.colors[res.reshape(final_h * final_w)]
 
+    def _svd(self, X):
+        """Reconstruct image via truncated SVD on each RGB channel"""
+        if self.SVD_N_COMPONENTS >= X.shape[0] and self.SVD_N_COMPONENTS >= X.shape[1]:
+            return X  # skip SVD
+                
+        @adapt_rgb(each_channel)
+        def _wrapper(dim):    
+            U, s, V = randomized_svd(dim, 
+                                    n_components=self.SVD_N_COMPONENTS,
+                                    n_iter=self.SVD_MAX_ITER,
+                                    random_state=self.SVD_RANDOM_STATE)
+            S = np.diag(s.ravel())
+            A = U.dot(S.dot(V))
+            return np.clip(A / 255., 0., 1.)
+        
+        return _wrapper(X)
 
     def transform(self, X, y=None):
         """Transform image to pyxelated version"""
@@ -336,6 +357,9 @@ class Pyx(BaseEstimator, TransformerMixin):
             # change size depending on the number of iterations
             new_h, new_w = new_h * (self.sobel ** self.depth), new_w * (self.sobel ** self.depth)
         X_ = resize(X_[:, :, :3], (new_h, new_w), anti_aliasing=True)  # colors are now 0. - 1.        
+        
+        if self.svd:
+            X_ = self._svd(X_)
         
         if self.boost:
             # adjust contrast

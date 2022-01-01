@@ -19,6 +19,7 @@ def convert(args: argparse.Namespace):
         dither=args.dither,
         sobel=args.sobel,
         alpha=args.alpha,
+        svd=not args.nosvd,
         boost=not args.noboost,
     )
     image = io.imread(args.INFILE)
@@ -62,6 +63,13 @@ def main():
         type=float,
         help="Alpha threshold for output pixel visibility.",
         default=0.6,
+    )
+    parser.add_argument(
+        "--nosvd",
+        action="store_true",
+        help="By default, apply truncated SVD on the image before"
+        "transformation for better results. In case you want ignore "
+        "this step, use --nosvd.",
     )
     parser.add_argument(
         "--noboost",
