@@ -138,7 +138,7 @@ Pyxelate downsamples images by (iteratively) dividing it to 3x3 tiles and calcul
 
 Then an unsupervised machine learning method, a [Bayesian Gaussian Mixture](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html) model is fitted (instead of conventional K-means) to find a reduced palette. The tied gaussians give a better estimate (than  Euclidean distance) and allow smaller centroids to appear and then lose importance to larger ones further away. The probability mass function returned by the uncalibrated model is then used as a basis for different dithering techniques.
 
-Preprocessing and color space conversion tricks are also applied for better results.
+Preprocessing and color space conversion tricks are also applied for better results. Singular Value Decomposition can optionally be enabled for noise reduction. 
 
 ## PROTIPs
 - There is **no one setting fits all**, try experimenting with different parameters for better results! A setting that generates visually pleasing result on one image might not work well for another.
@@ -187,7 +187,7 @@ Or use the CLI tool with `--sequence` and `%d` in both input and output file nam
 ```bash
 $ pyxelate temp/img_%d.img output/img_%d.png --factor 14 --palette 7 --sequence
 
-Pyxelating temp/img_%d.ong...
+Pyxelating temp/img_%d.png...
 Found 9 '.png' images in 'temp'
 ...
 ```
