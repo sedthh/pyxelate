@@ -267,7 +267,7 @@ class Pyx(BaseEstimator, TransformerMixin):
         X_ = self._pad(X, 3)
         @adapt_rgb(each_channel)
         def _wrapper(dim):
-            return skimage_dilation(dim, selem=skimage_square(3))
+            return skimage_dilation(dim, footprint=skimage_square(3))
         mask = X_[:, :, 3]
         alter = _wrapper(X_[:, :, :3])
         X_[:, :, :3][mask < self.alpha] = alter[mask < self.alpha]

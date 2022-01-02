@@ -33,7 +33,7 @@ class images_to_parts:
                 difference = np.abs(current_svd[:, :, :3] - last_svd[:, :, :3])
                 mask = np.where(np.max(difference, axis=2) > self.sensitivity, True, False)
                 if self.square:
-                    mask = skimage_dilation(mask, selem=skimage_square(self.square))
+                    mask = skimage_dilation(mask, footprint=skimage_square(self.square))
                 if np.sum(mask) < self.keyframe * np.prod(mask.shape):
                     current_image[:, :, 3] = mask
                     yield current_image, False

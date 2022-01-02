@@ -2,9 +2,11 @@
 
 import argparse
 import sys
+import re
 from pathlib import Path
 from typing import List, Optional, Set, Tuple, Union
 
+import numpy as np
 from skimage import io
 try:
     from . import Pyx, Pal, images_to_parts, parts_to_images
@@ -46,9 +48,9 @@ def convert_sequence(args: argparse.Namespace):
     candidates = [str(c.name) for c in list(p.parent.resolve().glob(f"*{p.suffix}"))]
     images, names, i = [], [], 0
     while True:
-        check = files.replace("%d", str(i))
-        if check in candidates:
-            name = p.parent.resolve() / check
+        check = [bool(re.search(r'' + files.replace("%d", f"[0]*?{i}"), c)) for c in candidates]
+        if np.any(check):
+            name = p.parent.resolve() / candidates[np.argmax(check)]
             names.append(name)
             image = io.imread(name) 
             images.append(image)
@@ -92,8 +94,8 @@ def convert_sequence(args: argparse.Namespace):
     
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("INFILE", type=str, help="Input image filename. For sequence of images use: folder/img_%d.png")
-    parser.add_argument("OUTFILE", type=str, help="Output image filename. For sequence of images use: folder/output_%d.png")
+    parser.add_argument("INFILE", type=str, help="Input image filename. For sequence of images use: folder/img_%%d.png")
+    parser.add_argument("OUTFILE", type=str, help="Output image filename. For sequence of images use: folder/output_%%d.png")
     parser.add_argument("--width", type=int, help="Output image width.", default=None)
     parser.add_argument("--height", type=int, help="Output image height.", default=None)
     parser.add_argument("--factor", type=int, help="Downsample factor.", default=1)

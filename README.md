@@ -185,7 +185,7 @@ for i, image in enumerate(parts_to_images(new_images, new_keys)):
 Or use the CLI tool with `--sequence` and `%d` in both input and output file names:
 
 ```bash
-$ pyxelate temp/img_%d.img output/img_%d.png --factor 14 --palette 7 --sequence
+$ pyxelate temp/img_%d.png output/img_%d.png --factor 14 --palette 7 --sequence
 
 Pyxelating temp/img_%d.png...
 Found 9 '.png' images in 'temp'

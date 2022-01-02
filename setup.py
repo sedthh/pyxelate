@@ -12,7 +12,7 @@ setup(
     license="MIT",
     packages=["pyxelate"],
     zip_safe=False,
-    install_requires=["scikit-learn>=0.24.1", "scikit-image>=0.18.1", "numba>=0.53.1"],
+    install_requires=["scikit-learn>=0.24.1", "scikit-image>=0.19.1", "numba>=0.53.1"],
     entry_points={
         "console_scripts": [
             "pyxelate = pyxelate.main:main",
