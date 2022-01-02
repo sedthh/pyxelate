@@ -63,6 +63,9 @@ def convert_sequence(args: argparse.Namespace):
     if not args.quiet:
         print(f"Found {all} '{p.suffix}' images in '{p.parent}'")    
     
+    p = Path(args.OUTFILE)
+    files = str(p.name)
+    assert "%d" in files, "Output filename for sequences must contain %d to denote ordering!"
     # generate a new image sequence based on differences between them
     new_images, new_keys = [], []
     for i, (image, key) in enumerate(images_to_parts(images, square=args.sobel, keyframe=args.keyframe, sensitivity=args.sensitivity)):
@@ -76,16 +79,18 @@ def convert_sequence(args: argparse.Namespace):
         # save the pyxelated image part for later
         new_images.append(image)
         new_keys.append(key)
+        if args.partial:
+            # save partial results
+            file = str(p.parent / files.replace("%d", str(i)))
+            io.imsave(file, image)
         if not args.quiet and i % five_percent == 0:
             print(f"Finished {i+1} out of {all} ({round((i + 1) / all * 100)}%)")    
             
     if not args.quiet:
         print("Recreating pyxelated images...")
     # put the pyxelated parts back together
-    p = Path(args.OUTFILE)
-    files = str(p.name)
-    assert "%d" in files, "Output filename for sequences must contain %d to denote ordering!"
     for i, image in enumerate(parts_to_images(new_images, new_keys)):
+        # overwrite the files again
         file = str(p.parent / files.replace("%d", str(i)))
         io.imsave(file, image)
         if not args.quiet and i % five_percent == 0:
@@ -155,6 +160,14 @@ def main():
         action="store_true",
         help="Fit the palette again for each new keyframe. "
         "By default only the very first image in the sequnce will be used for palette fitting. "
+        "Only works for animations with --sequence."
+    )
+    parser.add_argument(
+        "--partial",
+        action="store_true",
+        help="Save partial results (to OUTFILE) while converting sequences. "
+        "This will save converted image fragments with transparency. These temporary results will"
+        "be overwritten after the converting process has finished running. A good sanity check. "
         "Only works for animations with --sequence."
     )
     parser.add_argument(
