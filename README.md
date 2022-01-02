@@ -14,6 +14,7 @@ Once installed, Pyxelate can be used either from the command line or from Python
 
 ```bash
 $ pyxelate examples/blazkowicz.jpg output.png --factor 14 --palette 7
+
 Pyxelating examples/blazkowicz.jpg...
 Wrote output.png
 ```
@@ -149,9 +150,44 @@ Preprocessing and color space conversion tricks are also applied for better resu
   <a href="https://twitter.com/OzegoDub" taget="_blank"><img alt="via https://twitter.com/OzegoDub" src="./examples/ozego.png" /></a>
 </p>
 
-## TODOs
-- Re-implement Pyxelate for animations / sequence of frames in video.
-- Include PIPENV python environment files instead of just setup.py.
-- Implement Yliluoma's ordered dithering algorithm and experiment with improving visuals through gamma correction. 
-- Write a whitepaper on the Pyxelate algorithm.
+## Creating animations
+It is possible to use Pyxelate on a sequence of images to create animations. To reduce flicker nd artifacts, it is recommended to first recreate the images as a sequence of keyframes and deviations from previous keyframes, and run the algorithm on these extracted differences only. Then as a second step these altered sequences can be merged on top of each other resulting in a series of pixel graphics.
 
+Pyxelate offers 2 methods to separate keyframes: `images_to_parts`, `parts_to_images`
+
+```python
+import os
+from skimage import io
+from pyxelate import Pyx, Pal, images_to_parts, parts_to_images
+
+# get all images
+images = []
+for file in os.listdir("where_my_images_are/"):
+    image = io.imread(file)
+    images.append(image)
+    
+# generate a new image sequence based on differences between them
+new_images, new_keys = [], []
+for i, (image, key) in enumerate(images_to_parts(images)):
+    if key:  # update palette at keyframes, this can be 'if key == 0' instead
+        pyx = Pyx(factor=5, upscale=5, palette=8, dither="naive").fit(image)
+    # run the algorithm on the difference only
+    image = pyx.transform(image)
+    # save the pyxelated image part for later
+    new_images.append(image)
+    new_keys.append(key)
+
+# put the pyxelated parts back together
+for i, image in enumerate(parts_to_images(new_images, new_keys)):
+    io.imsave(f"converted_images_with_reduced_flicker/img_{i}.png", image)
+```
+
+Or use the CLI tool with `--sequence` and `%d` in both input and output file names:
+
+```bash
+$ pyxelate temp/img_%d.img output/img_%d.png --factor 14 --palette 7 --sequence
+
+Pyxelating temp/img_%d.ong...
+Found 9 '.png' images in 'temp'
+...
+```
