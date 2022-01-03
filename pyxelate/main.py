@@ -31,7 +31,6 @@ def get_model(args: argparse.Namespace):
         sobel=args.sobel,
         alpha=args.alpha,
         svd=not args.nosvd,
-        boost=not args.noboost,
     )
 
 def convert(args: argparse.Namespace):
@@ -126,13 +125,7 @@ def main():
         "transformation for better results. In case you want ignore "
         "this step, use --nosvd.",
     )
-    parser.add_argument(
-        "--noboost",
-        action="store_true",
-        help="By default, adjust contrast and apply preprocessing on the image before "
-        "transformation for better results. In case you see unwanted dark "
-        "pixels in your image, use --noboost.",
-    )
+    
     # for animations
     parser.add_argument(
         "--sequence",
@@ -166,8 +159,11 @@ def main():
     parser.add_argument("--quiet", action="store_true", help="Suppress logging output.")
     args = parser.parse_args()
 
-    if args.dither not in ("none", "naive") and args.sequence:
-        raise ValueError(f"Only 'naive' dithering is available when converting a sequence of images! Please use '--dither naive' instead of '--dither {args.dither}'")
+    if args.sequence:
+        if args.dither not in ("none", "naive"):
+            raise ValueError(f"Only 'naive' dithering is available when converting a sequence of images! Please use '--dither naive' instead of '--dither {args.dither}'")
+        if not args.nosvd and not args.quiet:
+            print(f"TIP: consider using --nosvd with --sequence for increased performance")
          
     # The --palette arg can be an integer or a palette name.
     try:
