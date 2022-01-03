@@ -189,12 +189,6 @@ Found 781 '.png' images in 'temp'
 ...
 ```
 
-<p><video controls preload="metadata">
-<source type="video/webm" src="/examples/u6.webm"></source>
-</video></p>
-
-![U6](/examples/u6.webm)
-
 | Parameter | Description |
 | --- | --- |
 | pad | In case the original image sequence has black bars, set pad to the height of these bars to cut them off automatically before the conversion process. Can be set as `int` or `(int, int)` for different (top, bottom) values. |
