@@ -168,9 +168,11 @@ for file in os.listdir("where_my_images_are/"):
 # generate a new image sequence based on differences between them
 new_images, new_keys = [], []
 # in case of unwanted artifacts remain on the final animation, try reducing sensitivity
-for i, (image, key) in enumerate(Vid(images, sensitivity=0.1)):
-    if key:  # update palette at keyframes, this can be 'if key == 0' instead
-        pyx = Pyx(factor=5, upscale=5, palette=8, dither="naive").fit(image)
+for i, (image, is_keyframe) in enumerate(Vid(images, sensitivity=0.1)):
+    if i == 0:  # update palette at keyframes, this can be 'if is_keyframe:' instead for each keyframe
+        # if you must use dither, use dither="naive" for animations only
+        pyx = Pyx(factor=9, upscale=5, palette=10, svd=False)
+        pyx.fit(image)
     # run the algorithm on the difference only
     image = pyx.transform(image)
     # save the pyxelated image part for later
@@ -179,17 +181,25 @@ for i, (image, key) in enumerate(Vid(images, sensitivity=0.1)):
 ```
 
 Or use the CLI tool with `--sequence` and `%d` in both input and output file names:
-
 ```bash
-$ pyxelate temp/img_%d.png output/img_%d.png --factor 14 --palette 7 --sequence
+$ pyxelate temp/img_%d.png output/img_%d.png --factor 9 --upscale 5  --palette 10 --sequence --nosvd
 
 Pyxelating temp/img_%d.png...
-Found 9 '.png' images in 'temp'
+Found 781 '.png' images in 'temp'
 ...
 ```
 
+<p><video controls preload="metadata">
+<source type="video/webm" src="/examples/u6.webm"></source>
+</video></p>
+
+![U6](/examples/u6.webm)
+
 | Parameter | Description |
 | --- | --- |
+| pad | In case the original image sequence has black bars, set pad to the height of these bars to cut them off automatically before the conversion process. Can be set as `int` or `(int, int)` for different (top, bottom) values. |
 | sobel | The size of the sobel operator used when calling Pyx() (they share the same default value, change it only if you changed it in Pyx()). |
 | keyframe | The percentage of difference needed for two frames to be considered similar. If the differenece is bigger, a new keyframe will be created. Default is `0.33`. |
 | sensitivity | The percentage of difference between pixels required for two areas to be considered different. Default is `0.20`, lower it if you see unwanted artifacts in your animation, raise it if you want a more layered look. |
+
+You can turn a video into a sequence of images using [ffmpeg](https://www.ffmpeg.org/).

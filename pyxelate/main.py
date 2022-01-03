@@ -67,7 +67,7 @@ def convert_sequence(args: argparse.Namespace):
     files = str(p.name)
     assert "%d" in files, "Output filename for sequences must contain %d to denote ordering!"
     # generate a new image sequence based on differences between them
-    for i, (image, key) in enumerate(Vid(images, sobel=args.sobel, keyframe=args.keyframe, sensitivity=args.sensitivity)):
+    for i, (image, key) in enumerate(Vid(images, pad=args.pad, sobel=args.sobel, keyframe=args.keyframe, sensitivity=args.sensitivity)):
         if i == 0 or (key and args.refit):
             if not args.quiet:
                 print(f"Fitting model on keyframe '{names[i]}'")    
@@ -139,6 +139,14 @@ def main():
         action="store_true",
         help="Fit the palette again for each new keyframe. "
         "By default only the very first image in the sequnce will be used for palette fitting. "
+        "Only works for animations with --sequence."
+    )
+    parser.add_argument(
+        "--pad", 
+        type=int, 
+        default=0,
+        help="Cut black bars from the top and the bottom of the image sequence before conversion. "
+        "Default value is 0 (0 lines will be removed from both top and bottom). "
         "Only works for animations with --sequence."
     )
     parser.add_argument(

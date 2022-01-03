@@ -12,16 +12,24 @@ class Vid:
     SVD_MAX_ITER = 16
     SVD_RANDOM_STATE = 1234
     
-    def __init__(self, images, sobel=2, keyframe=.33, sensitivity=.1):
+    def __init__(self, images, pad=0, sobel=2, keyframe=.33, sensitivity=.1):
         assert isinstance(images, (list, tuple)), "Function only accepts list or tuple of image representations!"
         self.images = images
+        if pad is None or pad == 0:
+            self.pad = (None, None)
+        elif isinstance(pad, int):
+            self.pad = (pad, -pad)
+        elif isinstance(pad, (list, tuple)):
+            self.pad = (None if pad[0] == 0 else pad[0], None if pad[1] == 0 else -pad[1])
+        else:
+            raise ValueError("The value of 'pad' must be int or (int, int)")
         self.sobel = int(sobel)
         self.keyframe = keyframe
         self.sensitivity = sensitivity
     
     def __iter__(self):
         for i, image in enumerate(self.images):
-            current_image = np.clip(np.copy(image[:, :, :3]) / 255., 0., 1.)
+            current_image = np.clip(np.copy(image[self.pad[0]:self.pad[1], :, :3]) / 255., 0., 1.)
             if i == 0:
                 last_image = np.copy(current_image)
                 key_image = np.copy(current_image)
