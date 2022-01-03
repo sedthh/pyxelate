@@ -158,7 +158,7 @@ Pyxelate offers 2 methods to separate keyframes: `images_to_parts`, `parts_to_im
 ```python
 import os
 from skimage import io
-from pyxelate import Pyx, Pal, images_to_parts, parts_to_images
+from pyxelate import Pyx, Pal, Vid
 
 # get all images
 images = []
@@ -169,18 +169,14 @@ for file in os.listdir("where_my_images_are/"):
 # generate a new image sequence based on differences between them
 new_images, new_keys = [], []
 # in case of unwanted artifacts remain on the final animation, try reducing sensitivity
-for i, (image, key) in enumerate(images_to_parts(images, sensitivity=0.05)):
+for i, (image, key) in enumerate(Vid(images, sensitivity=0.1)):
     if key:  # update palette at keyframes, this can be 'if key == 0' instead
         pyx = Pyx(factor=5, upscale=5, palette=8, dither="naive").fit(image)
     # run the algorithm on the difference only
     image = pyx.transform(image)
     # save the pyxelated image part for later
-    new_images.append(image)
-    new_keys.append(key)
-
-# put the pyxelated parts back together
-for i, image in enumerate(parts_to_images(new_images, new_keys)):
     io.imsave(f"converted_images_with_reduced_flicker/img_{i}.png", image)
+
 ```
 
 Or use the CLI tool with `--sequence` and `%d` in both input and output file names:
@@ -192,3 +188,9 @@ Pyxelating temp/img_%d.png...
 Found 9 '.png' images in 'temp'
 ...
 ```
+
+| Parameter | Description |
+| --- | --- |
+| sobel | The size of the sobel operator used when calling Pyx() (they share the same default value, change it only if you changed it in Pyx()). |
+| keyframe | The percentage of difference needed for two frames to be considered similar. If the differenece is bigger, a new keyframe will be created. Default is `0.33`. |
+| sensitivity | The percentage of difference between pixels required for two areas to be considered different. Default is `0.20`, lower it if you see unwanted artifacts in your animation, raise it if you want a more layered look. |

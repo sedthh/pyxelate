@@ -10,4 +10,4 @@ __github_username__ = "sedthh"
 
 from .pal import Pal
 from .pyx import Pyx
-from .vid import images_to_parts, parts_to_images
+from .vid import Vid
