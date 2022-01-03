@@ -14,6 +14,7 @@ Once installed, Pyxelate can be used either from the command line or from Python
 
 ```bash
 $ pyxelate examples/blazkowicz.jpg output.png --factor 14 --palette 7
+
 Pyxelating examples/blazkowicz.jpg...
 Wrote output.png
 ```
@@ -88,7 +89,6 @@ trex_p = Pyx(factor=9, palette=4, dither="naive", alpha=.6).fit_transform(trex)
 | alpha | For images with transparency, the transformed image's pixel will be either visible/invisible above/below this threshold. Default is `0.6`. |
 | sobel | The size of the sobel operator (N*N area to calculate the gradients for downsampling), must be an `int` larger than 1. Default is `3`, try `2` for a much faster but less accurate output. |
 | depth | How many times should the Pyxelate algorithm be applied to downsample the image. More iteratrions will result in blockier aesthatics. Must be a positive `int`, although it is really time consuming and should never be more than 3. Raise it only for really small images. Default is `1`. |
-| boost | Adjust contrast and apply preprocessing on the image before transformation for better results. In case you see unwanted dark pixels in your image set this to `False`. Default is `True`. |
 
 Showcase of available dithering methods:
 ![Dithering methods](/examples/p_palms.png)
@@ -137,7 +137,7 @@ Pyxelate downsamples images by (iteratively) dividing it to 3x3 tiles and calcul
 
 Then an unsupervised machine learning method, a [Bayesian Gaussian Mixture](https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html) model is fitted (instead of conventional K-means) to find a reduced palette. The tied gaussians give a better estimate (than  Euclidean distance) and allow smaller centroids to appear and then lose importance to larger ones further away. The probability mass function returned by the uncalibrated model is then used as a basis for different dithering techniques.
 
-Preprocessing and color space conversion tricks are also applied for better results.
+Preprocessing and color space conversion tricks are also applied for better results. Singular Value Decomposition can optionally be enabled for noise reduction. 
 
 ## PROTIPs
 - There is **no one setting fits all**, try experimenting with different parameters for better results! A setting that generates visually pleasing result on one image might not work well for another.
@@ -149,9 +149,51 @@ Preprocessing and color space conversion tricks are also applied for better resu
   <a href="https://twitter.com/OzegoDub" taget="_blank"><img alt="via https://twitter.com/OzegoDub" src="./examples/ozego.png" /></a>
 </p>
 
-## TODOs
-- Re-implement Pyxelate for animations / sequence of frames in video.
-- Include PIPENV python environment files instead of just setup.py.
-- Implement Yliluoma's ordered dithering algorithm and experiment with improving visuals through gamma correction. 
-- Write a whitepaper on the Pyxelate algorithm.
+## Creating animations
+It is possible to use Pyxelate on a sequence of images to create animations. To reduce flicker nd artifacts, it is recommended to first recreate the images as a sequence of keyframes and deviations from previous keyframes, and run the algorithm on these extracted differences only. Then as a second step these altered sequences can be merged on top of each other resulting in a series of pixel graphics.
 
+Pyxelate offers 2 methods to separate keyframes: `images_to_parts`, `parts_to_images`
+
+```python
+import os
+from skimage import io
+from pyxelate import Pyx, Pal, Vid
+
+# get all images
+images = []
+for file in os.listdir("where_my_images_are/"):
+    image = io.imread(file)
+    images.append(image)
+    
+# generate a new image sequence based on differences between them
+new_images, new_keys = [], []
+# in case of unwanted artifacts remain on the final animation, try reducing sensitivity
+for i, (image, is_keyframe) in enumerate(Vid(images, sensitivity=0.1)):
+    if i == 0:  # update palette at keyframes, this can be 'if is_keyframe:' instead for each keyframe
+        # if you must use dither, use dither="naive" for animations only
+        pyx = Pyx(factor=9, upscale=5, palette=10, svd=False)
+        pyx.fit(image)
+    # run the algorithm on the difference only
+    image = pyx.transform(image)
+    # save the pyxelated image part for later
+    io.imsave(f"converted_images_with_reduced_flicker/img_{i}.png", image)
+
+```
+
+Or use the CLI tool with `--sequence` and `%d` in both input and output file names:
+```bash
+$ pyxelate temp/img_%d.png output/img_%d.png --factor 9 --upscale 5  --palette 10 --sequence --nosvd
+
+Pyxelating temp/img_%d.png...
+Found 781 '.png' images in 'temp'
+...
+```
+
+| Parameter | Description |
+| --- | --- |
+| pad | In case the original image sequence has black bars, set pad to the height of these bars to cut them off automatically before the conversion process. Can be set as `int` or `(int, int)` for different (top, bottom) values. |
+| sobel | The size of the sobel operator used when calling Pyx() (they share the same default value, change it only if you changed it in Pyx()). |
+| keyframe | The percentage of difference needed for two frames to be considered similar. If the differenece is bigger, a new keyframe will be created. Default is `0.33`. |
+| sensitivity | The percentage of difference between pixels required for two areas to be considered different. Default is `0.20`, lower it if you see unwanted artifacts in your animation, raise it if you want a more layered look. |
+
+You can turn a video into a sequence of images using [ffmpeg](https://www.ffmpeg.org/).

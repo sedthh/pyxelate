@@ -101,6 +101,7 @@ __pypackages__/
 
 old_pyxelate/
 legacy/
+temp/
 
 # Celery stuff
 celerybeat-schedule

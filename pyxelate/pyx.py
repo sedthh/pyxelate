@@ -22,7 +22,11 @@ from scipy.ndimage import convolve
 
 from numba import njit
 
-from .pal import BasePalette
+try:
+    from .pal import BasePalette
+except ImportError:
+    from pal import BasePalette
+    
 
 class BGM(BayesianGaussianMixture):
     """Wrapper for BayesianGaussianMixture"""
@@ -112,7 +116,7 @@ class Pyx(BaseEstimator, TransformerMixin):
     
     def __init__(self, height=None, width=None, factor=None, upscale=1, 
                  depth=1, palette=8, dither="none", sobel=3, svd=True,
-                 alpha=.6, boost=True):
+                 alpha=.6):
         if (width is not None or height is not None) and factor is not None:
             raise ValueError("You can only set either height + width or the downscaling factor, but not both!")
         assert height is None or height >= 1, "Height must be a positive integer!"
@@ -144,7 +148,6 @@ class Pyx(BaseEstimator, TransformerMixin):
         self.dither = dither
         self.svd = bool(svd)
         self.alpha = float(alpha)
-        self.boost = bool(boost)
         
         self.model = BGM(self.palette, self.find_palette)
         self.is_fitted = False
@@ -263,7 +266,7 @@ class Pyx(BaseEstimator, TransformerMixin):
         X_ = self._pad(X, 3)
         @adapt_rgb(each_channel)
         def _wrapper(dim):
-            return skimage_dilation(dim, selem=skimage_square(3))
+            return skimage_dilation(dim, footprint=skimage_square(3))
         mask = X_[:, :, 3]
         alter = _wrapper(X_[:, :, :3])
         X_[:, :, :3][mask < self.alpha] = alter[mask < self.alpha]
@@ -361,15 +364,15 @@ class Pyx(BaseEstimator, TransformerMixin):
         if self.svd:
             X_ = self._svd(X_)
         
-        if self.boost:
-            # adjust contrast
-            X_ = rgb2hsv(equalize_adapthist(X_))
-            X_[:, :, 1:] *= self.HIST_BRIGHTNESS
-            X_ = hsv2rgb(np.clip(X_, 0., 1.))
         
+        # adjust contrast
+        X_ = rgb2hsv(equalize_adapthist(X_))
+        X_[:, :, 1:] *= self.HIST_BRIGHTNESS
+        X_ = hsv2rgb(np.clip(X_, 0., 1.))
+            
         # pyxelate iteratively
         for _ in range(self.depth):
-            if self.boost and d == 3:
+            if d == 3:
                 # remove noise
                 X_ = self._median(X_)
             X_ = self._pyxelate(X_)  # downsample in each iteration
