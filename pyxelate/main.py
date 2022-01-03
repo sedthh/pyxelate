@@ -48,7 +48,7 @@ def convert_sequence(args: argparse.Namespace):
     candidates = [str(c.name) for c in list(p.parent.resolve().glob(f"*{p.suffix}"))]
     images, names, i = [], [], 0
     while True:
-        check = [bool(re.search(r'' + files.replace("%d", f"[0]*?{i}"), c)) for c in candidates]
+        check = [bool(re.search(r'\b' + files.replace("%d", f"[0]*?{i}") + r'\b', c)) for c in candidates]
         if np.any(check):
             name = p.parent.resolve() / candidates[np.argmax(check)]
             names.append(name)
@@ -173,16 +173,16 @@ def main():
     parser.add_argument(
         "--keyframe", 
         type=float, 
-        default=.66,
-        help="Percentage (0. - 1.) of image difference needed to be considered a new keyframe."
-        "Default value is 0.66. Only works for animations with --sequence."
+        default=.2,
+        help="Percentage (0. - 1.) of average image difference needed to be considered a new keyframe."
+        "Default value is 0.20. Only works for animations with --sequence."
     )
     parser.add_argument(
         "--sensitivity", 
         type=float, 
-        default=.1,
+        default=.05,
         help="Percentage (0. - 1.) of RGB difference needed for a part of image to be considered different."
-        "Default value is 0.10. Only works for animations with --sequence."
+        "Default value is 0.05. Only works for animations with --sequence."
     )
     # other
     parser.add_argument("--quiet", action="store_true", help="Suppress logging output.")

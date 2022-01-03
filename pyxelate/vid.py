@@ -1,9 +1,9 @@
 import numpy as np
 from sklearn.utils.extmath import randomized_svd
 from skimage.color.adapt_rgb import adapt_rgb, each_channel
-from skimage.transform import resize
 from skimage.morphology import square as skimage_square
-from skimage.morphology import dilation as skimage_dilation
+from skimage.morphology import binary_dilation as skimage_dilation
+
 
 class images_to_parts:
     
@@ -11,7 +11,7 @@ class images_to_parts:
     SVD_MAX_ITER = 16
     SVD_RANDOM_STATE = 1234
     
-    def __init__(self, images, square=2, keyframe=.66, sensitivity=.1):
+    def __init__(self, images, square=2, keyframe=.2, sensitivity=.05):
         assert isinstance(images, (list, tuple)), "Function only accepts list or tuple of image representations!"
         self.images = images
         self.square = int(square)
@@ -27,22 +27,24 @@ class images_to_parts:
             current_image = np.clip(current_image / 255., 0., 1.)
             if i == 0:
                 yield current_image, True
+                last_image = np.copy(current_image)
+                last_svd = self._svd(current_image)
             else:
                 current_svd = self._svd(current_image)
                 assert np.all([a == b for a, b in zip(last_image.shape, current_image.shape)]), f"Image at position {i} has different size!"
                 difference = np.abs(current_svd[:, :, :3] - last_svd[:, :, :3])
-                mask = np.where(np.max(difference, axis=2) > self.sensitivity, True, False)
-                if self.square:
-                    mask = skimage_dilation(mask, footprint=skimage_square(self.square))
-                if np.sum(mask) < self.keyframe * np.prod(mask.shape):
+                difference = np.max(difference, axis=2)
+                if np.mean(difference) < self.keyframe:
+                    mask = np.where(difference > self.sensitivity, True, False)
+                    if self.square:
+                        mask = skimage_dilation(mask, footprint=skimage_square(self.square ** 2))
                     current_image[:, :, 3] = mask
-                    yield current_image, False
+                    yield current_image, False    
                 else:
                     # new keyframe
                     yield current_image, True
-            last_image = np.copy(current_image)
-            last_svd = self._svd(current_image)
-    
+                    last_image = np.copy(current_image)
+                    last_svd = self._svd(current_image)
     
     @staticmethod
     def _is_transparent(X):
@@ -81,19 +83,19 @@ class parts_to_images:
         for i, (image, is_keyframe) in enumerate(zip(self.images, self.keyframes)):
             if i == 0:
                 last_image = np.copy(image)
+                yield last_image
             else:
                 if is_keyframe:
                     last_image = np.copy(image)
+                    yield last_image
                 else:
-                    last_image = self.merge_images(last_image, image)
-            yield last_image
-                                  
-    @staticmethod      
-    def merge_images(*args):
+                    yield self._merge_images(last_image, image)
+    
+    @staticmethod                             
+    def _merge_images(*args):
         assert len(args), "No images given!"
         result = np.copy(args[0])
         for image in args[1:]:
             mask = ~np.logical_xor(result[:, :, 3], image[:, :, 3])
             result[mask] = image[mask]
         return result
-    

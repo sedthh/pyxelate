@@ -168,7 +168,8 @@ for file in os.listdir("where_my_images_are/"):
     
 # generate a new image sequence based on differences between them
 new_images, new_keys = [], []
-for i, (image, key) in enumerate(images_to_parts(images)):
+# in case of unwanted artifacts remain on the final animation, try reducing sensitivity
+for i, (image, key) in enumerate(images_to_parts(images, sensitivity=0.05)):
     if key:  # update palette at keyframes, this can be 'if key == 0' instead
         pyx = Pyx(factor=5, upscale=5, palette=8, dither="naive").fit(image)
     # run the algorithm on the difference only
