@@ -323,7 +323,7 @@ class Pyx(BaseEstimator, TransformerMixin):
 
     def _svd(self, X):
         """Reconstruct image via truncated SVD on each RGB channel"""
-        if self.SVD_N_COMPONENTS >= X.shape[0] and self.SVD_N_COMPONENTS >= X.shape[1]:
+        if self.SVD_N_COMPONENTS >= X.shape[0] - 1 and self.SVD_N_COMPONENTS >= X.shape[1] - 1:
             return X  # skip SVD
                 
         @adapt_rgb(each_channel)

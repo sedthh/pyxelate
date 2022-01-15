@@ -88,7 +88,7 @@ def main():
     parser.add_argument("OUTFILE", type=str, help="Output image filename. For sequence of images use: folder/output_%%d.png")
     parser.add_argument("--width", type=int, help="Output image width.", default=None)
     parser.add_argument("--height", type=int, help="Output image height.", default=None)
-    parser.add_argument("--factor", type=int, help="Downsample factor.", default=1)
+    parser.add_argument("--factor", type=int, help="Downsample factor.", default=None)
     parser.add_argument(
         "--upscale", type=int, help="Upscale factor for output pixels.", default=1
     )
@@ -152,9 +152,9 @@ def main():
     parser.add_argument(
         "--keyframe", 
         type=float, 
-        default=.33,
+        default=.3,
         help="Percentage (0. - 1.) of average image difference needed to be considered a new keyframe."
-        "Default value is 0.33. Only works for animations with --sequence."
+        "Default value is 0.30. Only works for animations with --sequence."
     )
     parser.add_argument(
         "--sensitivity", 
