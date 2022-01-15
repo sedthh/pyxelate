@@ -1,18 +1,12 @@
 import numpy as np
 from skimage.morphology import square as skimage_square
 from skimage.morphology import binary_dilation as skimage_dilation
-from skimage.filters import gaussian
-from scipy.ndimage import uniform_filter
 
 
 class Vid:
     """Generator class that yields new images based on differences between them"""
     
-    SVD_N_COMPONENTS = 32
-    SVD_MAX_ITER = 16
-    SVD_RANDOM_STATE = 1234
-    
-    def __init__(self, images, pad=0, sobel=2, keyframe=.33, sensitivity=.1):
+    def __init__(self, images, pad=0, sobel=2, keyframe=.3, sensitivity=.1):
         assert isinstance(images, (list, tuple)), "Function only accepts list or tuple of image representations!"
         self.images = images
         if pad is None or pad == 0:
