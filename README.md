@@ -4,8 +4,6 @@
 
 Super Pyxelate converts images to 8-bit pixel art. It is an improved, faster implementation of the [original Pyxelate](https://github.com/sedthh/pyxelate/releases/tag/1.2.1) algorithm with palette transfer support and enhanced dithering. 
 
-*Super Pyxelate is currently in beta.*
-
 ![Pixel art corgi](/examples/p_corgi.png)
 
 # Usage
@@ -193,7 +191,7 @@ Found 781 '.png' images in 'temp'
 | --- | --- |
 | pad | In case the original image sequence has black bars, set pad to the height of these bars to cut them off automatically before the conversion process. Can be set as `int` or `(int, int)` for different (top, bottom) values. |
 | sobel | The size of the sobel operator used when calling Pyx() (they share the same default value, change it only if you changed it in Pyx()). |
-| keyframe | The percentage of difference needed for two frames to be considered similar. If the differenece is bigger, a new keyframe will be created. Default is `0.33`. |
-| sensitivity | The percentage of difference between pixels required for two areas to be considered different. Default is `0.20`, lower it if you see unwanted artifacts in your animation, raise it if you want a more layered look. |
+| keyframe | The percentage of difference needed for two frames to be considered similar. If the differenece is bigger, a new keyframe will be created. Default is `0.30`. |
+| sensitivity | The percentage of difference between pixels required for two areas to be considered different. Default is `0.10`, lower it if you see unwanted artifacts in your animation, raise it if you want a more layered look. |
 
 You can turn a video into a sequence of images using [ffmpeg](https://www.ffmpeg.org/).
