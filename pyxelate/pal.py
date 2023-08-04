@@ -1,14 +1,18 @@
 import numpy as np
 from enum import Enum
 
+from typing import List, Iterator
+
+
 class BasePalette(Enum):
-    """Palette Enum class with additional helper functions"""
+    """Palette Enum class with additional helper functions, 
+       so custom palettes can be used without the need for extending this class further"""
     
-    def __len__(self):
+    def __len__(self) -> int:
         """Number of colors in palette"""
         return len(self.value)
     
-    def __iter__(self):
+    def __iter__(self) -> Iterator[np.ndarray]:
         self.n = 0
         return self
 
@@ -21,16 +25,16 @@ class BasePalette(Enum):
             raise StopIteration
     
     @classmethod
-    def list(self):
+    def list(self) -> List[str]:
         """list all available Palette names"""
         return list(map(lambda x: x.name, self))
     
-    def from_hex(hex_list):
+    def from_hex(hex_list) -> np.ndarray:
         """Generate Pal palette from list of #HEX color values"""
         hex_list = [h.lstrip("#") for h in hex_list]
         return np.array([[tuple(int(h[i:i+2], 16) for i in (0, 2, 4))] for h in hex_list], dtype=float) / 255. 
     
-    def from_rgb(rgb_list):
+    def from_rgb(rgb_list) -> np.ndarray:
         """Generate Pal palette from list of 0-255 [R, G, B] values"""
         return np.array([[rgb] for rgb in rgb_list], dtype=float) / 255.
     

@@ -1,3 +1,4 @@
 scikit-learn>=0.24.1
 scikit-image>=0.19.1
 numba>=0.53.1
+matplotlib

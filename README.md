@@ -6,6 +6,8 @@ Super Pyxelate converts images to 8-bit pixel art. It is an improved, faster imp
 
 ![Pixel art corgi](/examples/p_corgi.png)
 
+**NOTE:** Check out the new [Retro Diffusion](https://astropulse.gumroad.com/l/RetroDiffusion), a generative AI alternative based on [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release)!
+
 # Usage
 
 Once installed, Pyxelate can be used either from the command line or from Python.
@@ -121,6 +123,21 @@ Fitting existing palettes on different images will also have different results f
 pip install git+https://github.com/sedthh/pyxelate.git --upgrade
 ```
 
+Create a virtual environment:
+```
+cd pyxelate
+pip install virtualenv --upgrade
+virtualenv -p python3.9.2 pyxenv
+
+# activate venv on Unix / macOS
+source pyxenv/bin/activate
+# or on Windows
+.\pyxenv\Scripts\activate
+
+pip install -r requirements.txt
+```
+
+
 Pyxelate relies on the following libraries to run (included in *requirements.txt*):
 - [sklearn 0.24.1](https://scikit-learn.org/stable/)
 - [skimage 0.18.1](https://scikit-image.org/)
@@ -148,47 +165,11 @@ Preprocessing and color space conversion tricks are also applied for better resu
 </p>
 
 ## Creating animations
-It is possible to use Pyxelate on a sequence of images to create animations. To reduce flicker nd artifacts, it is recommended to first recreate the images as a sequence of keyframes and deviations from previous keyframes, and run the algorithm on these extracted differences only. Then as a second step these altered sequences can be merged on top of each other resulting in a series of pixel graphics.
-
-Pyxelate offers 2 methods to separate keyframes: `images_to_parts`, `parts_to_images`
-
-```python
-import os
-from skimage import io
-from pyxelate import Pyx, Pal, Vid
-
-# get all images
-images = []
-for file in os.listdir("where_my_images_are/"):
-    image = io.imread(file)
-    images.append(image)
-    
-# generate a new image sequence based on differences between them
-new_images, new_keys = [], []
-# in case of unwanted artifacts remain on the final animation, try reducing sensitivity
-for i, (image, is_keyframe) in enumerate(Vid(images, sensitivity=0.1)):
-    if i == 0:  # update palette at keyframes, this can be 'if is_keyframe:' instead for each keyframe
-        # if you must use dither, use dither="naive" for animations only
-        pyx = Pyx(factor=9, upscale=5, palette=10, svd=False)
-        pyx.fit(image)
-    # run the algorithm on the difference only
-    image = pyx.transform(image)
-    # save the pyxelated image part for later
-    io.imsave(f"converted_images_with_reduced_flicker/img_{i}.png", image)
-
-```
-
-Or use the CLI tool with `--sequence` and `%d` in both input and output file names:
-```bash
-$ pyxelate temp/img_%d.png output/img_%d.png --factor 9 --upscale 5  --palette 10 --sequence --nosvd
-
-Pyxelating temp/img_%d.png...
-Found 781 '.png' images in 'temp'
-...
-```
+It is possible to use Pyxelate on a sequence of images to create animations via the CLI tol or the iterator in the `Vid` class. 
 
 | Parameter | Description |
 | --- | --- |
+| images | List of loaded images (image representations must be numpy arrays) to iterate over |
 | pad | In case the original image sequence has black bars, set pad to the height of these bars to cut them off automatically before the conversion process. Can be set as `int` or `(int, int)` for different (top, bottom) values. |
 | sobel | The size of the sobel operator used when calling Pyx() (they share the same default value, change it only if you changed it in Pyx()). |
 | keyframe | The percentage of difference needed for two frames to be considered similar. If the differenece is bigger, a new keyframe will be created. Default is `0.30`. |
