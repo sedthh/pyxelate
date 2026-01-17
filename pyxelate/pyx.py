@@ -12,7 +12,7 @@ from skimage.color import rgb2hsv, hsv2rgb, rgb2lab, deltaE_ciede2000
 from skimage.exposure import equalize_adapthist
 from skimage.filters import sobel as skimage_sobel
 from skimage.filters import median as skimage_median
-from skimage.morphology import square as skimage_square
+from skimage.morphology import footprint_rectangle as skimage_square
 from skimage.morphology import dilation as skimage_dilation
 from skimage.transform import resize
 from skimage.util import view_as_blocks
@@ -42,7 +42,7 @@ class BGM(BayesianGaussianMixture):
     MAX_ITER = 128
     RANDOM_STATE = 1234567
     
-    def __init__(self, palette: Union[int, BasePalette], find_palette: bool) -> None:
+    def __init__(self, palette: Union[int, BasePalette], find_palette: bool, xp=None) -> None:
         """Init BGM with different default parameters depending on use-case"""
         self.palette = palette
         self.find_palette = find_palette
@@ -288,7 +288,7 @@ class Pyx(BaseEstimator, TransformerMixin):
         @adapt_rgb(each_channel)
         def _wrapper(channel):
             # apply to each channel
-            return skimage_dilation(channel, footprint=skimage_square(3))
+            return skimage_dilation(channel, footprint=skimage_square([3,3]))
         
         h, w, d = X.shape
         X_ = self._pad(X, 3)
@@ -303,7 +303,7 @@ class Pyx(BaseEstimator, TransformerMixin):
         @adapt_rgb(each_channel)
         def _wrapper(channel):
             # apply to each channel
-            return skimage_median(channel, skimage_square(3))
+            return skimage_median(channel, skimage_square([3,3]))
         
         h, w, d = X.shape
         X_ = self._pad(X, 3)  # add padding for median filter
