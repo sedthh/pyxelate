@@ -42,7 +42,7 @@ class BGM(BayesianGaussianMixture):
     MAX_ITER = 128
     RANDOM_STATE = 1234567
     
-    def __init__(self, palette: Union[int, BasePalette], find_palette: bool, xp=None) -> None:
+    def __init__(self, palette: Union[int, BasePalette], find_palette: bool) -> None:
         """Init BGM with different default parameters depending on use-case"""
         self.palette = palette
         self.find_palette = find_palette
@@ -67,7 +67,7 @@ class BGM(BayesianGaussianMixture):
             # start centroid search from the palette's values
             self.mean_prior = np.mean([val[0] for val in self.palette], axis=0)
     
-    def _initialize_parameters(self, X: np.ndarray, random_state: int) -> None:
+    def _initialize_parameters(self, X: np.ndarray, random_state: int, xp=None) -> None:
         """Changes init parameters from K-means to CIE LAB distance when palette is assigned"""
         assert self.init_params == "kmeans", "Initialization is overwritten, can only be set as 'kmeans'."
         n_samples, _ = X.shape
